@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1650316398579.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "B08EC6A9",
+    "lastKnownWriteTime" : 1650328386,
+    "last_content_update" : 1650328386427,
+    "path" : "~/Documents/Code/altSymmMix/R/symm_fit_ind.R",
+    "project_path" : "R/symm_fit_ind.R",
+    "properties" : {
+        "cursorPosition" : "23,88",
+        "scrollLine" : "7",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

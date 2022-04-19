@@ -1,0 +1,172 @@
+#' symm_fit_ind.R
+#'
+#' Fit the alternative cardinality symmetric GMM for sets of independent elements
+#'
+#' @param testStats J*K matrix of test statistics where J is the number of sets and K is number of elements in each set.
+#' @param initMuList List of 2^L - 1 elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.
+#' @param initPiList List of 2^L - 1 elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.
+#' @param eps Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.
+#'
+#' @return A list with the elements:
+#' \item{muInfo}{List with same dimensions as initMuList, holds the final mean parameters.}
+#' \item{piInfo}{List with same dimensions as initPiList, holds the final probability parameters.}
+#' \item{iter}{Number of iterations run in EM algorithm.}
+#' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
+#' @importFrom stats runif
+#'
+#' @export
+#' @examples
+#' set.seed(0)
+#' testStats <- cbind(rnorm(10^5), rnorm(10^5))
+#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2),
+#' matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
+#' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
+#' symm_fit_ind(testStats = testStats, initMuList = initMutLIst, initPiList = initPiList)
+#'
+symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
+
+  J <- nrow(testStats)
+  # number of dimensions
+  K <- ncol(testStats)
+  B <- 2^K - 1
+  # number of hl configurations - 1
+  L <- 3^K - 1
+  # make all configurations
+  Hmat <- expand.grid(rep(list(-1:1), K))
+  # attach the bl
+  blVec <- rep(0, nrow(Hmat))
+  slVec <- rep(0, nrow(Hmat))
+  for (k_it in K:1) {
+    blVec <- blVec + 2^(K - k_it) * abs(Hmat[, k_it])
+    slVec <- slVec + abs(Hmat[, k_it])
+  }
+  # sort Hmat
+  Hmat <- Hmat %>% mutate(bl = blVec) %>%
+    mutate(sl = slVec) %>%
+    arrange(blVec, Var1, Var2) %>%
+    mutate(l = 0:(nrow(.) - 1))
+
+  # initialize
+  # the muInfo and piInfo are lists that hold the information in a more compact manner.
+  # the allMu and allPi are matrices that repeat the information so the calculations can be performed faster.
+  muInfo <- initMuList
+  piInfo <- initPiList
+  oldParams <- c(unlist(piInfo), unlist(muInfo))
+  MbVec <- sapply(piInfo, FUN=length)
+
+  # run until convergence
+  diffParams <- 10
+  iter <- 0
+  while (diffParams > eps) {
+
+    #####################################################
+    # first, update allPi and allMu with the new parameter values
+
+    # allPi holds the probabilities of each configuration (c 1), the bl of that
+    # configuration (c 2), the sl of that configuration (c3), the m of that configuration (c 4),
+    # and the l of that configuration (c 5),
+
+    # number of rows in piMat is L if Mb = 1 for all b.
+    # number of rows is \sum(l = 0 to L-1) {Mbl}
+    allPi <- c(piInfo[[1]], 0, 0, 1, 0)
+
+    # allMu holds the mean vectors for each configuration in each row, number of columns is K
+    allMu <- rep(0, K)
+
+    # loop through possible values of bl
+    for (b_it in 1:B) {
+
+      # Hmat rows with this bl
+      tempH <- Hmat %>% filter(bl == b_it)
+
+      # loop through possible m for this value of bl
+      for (m_it in 1:MbVec[b_it + 1]) {
+        allPi <- rbind(allPi, cbind(rep(piInfo[[b_it + 1]][m_it] / (2^tempH$sl[1]), nrow(tempH)), tempH$bl,
+                                    tempH$sl, rep(m_it, nrow(tempH)), tempH$l))
+
+        for (h_it in 1:nrow(tempH)) {
+          allMu <- cbind(allMu, unlist(tempH %>% select(-bl, -sl, -l) %>% slice(h_it)) * muInfo[[b_it + 1]][, m_it])
+        }
+      } # done looping through different m
+    } # dont looping through bl
+    colnames(allPi) <- c("Prob", "bl", "sl", "m", "l")
+
+    ##############################################################################################
+    # this is the E step where we calculate Pr(Z|c_l,m) for all c_l,m.
+    # each l,m is one column.
+    # only independence case for now
+    conditionalMat <- sapply(X=data.frame(allMu), FUN=calc_dens_ind_2d, Zmat = testStats) %>%
+      sweep(., MARGIN=2, STATS=allPi[, 1], FUN="*")
+    probZ <- apply(conditionalMat, 1, sum)
+    AikMat <- conditionalMat %>% sweep(., MARGIN=1, STATS=probZ, FUN="/")
+    Aik_alln <- apply(AikMat, 2, sum) / n
+
+    ###############################################################################################
+    # this is the M step for probabilities of hypothesis space
+    for (b_it in 0:B) {
+      for (m_it in 1:MbVec[b_it + 1]) {
+        tempIdx <- which(allPi[, 2] == b_it & allPi[, 4] == m_it)
+        piInfo[[b_it + 1]][m_it] <- sum(Aik_alln[tempIdx])
+      }
+    }
+
+    # M step for the means
+    # loop through values of bl
+    # do the alternative first
+    for (b_it in B:1) {
+
+      tempHmat <- Hmat %>% filter(bl == b_it)
+      # loop through m
+      for (m_it in 1:MbVec[b_it + 1]) {
+        tempMuSum <- rep(0, nrow(allMu))
+        tempDenom <- rep(0, nrow(allMu))
+
+        # these are the classes that contribute to \mu_bl,m
+        AikIdx <- which(allPi[, 2] == b_it & allPi[, 4] == m_it)
+        for (idx_it in 1:length(AikIdx)) {
+          tempAik <- AikIdx[idx_it]
+          tempHvec <- tempHmat %>% select(-bl, -sl, -l) %>% slice(idx_it) %>% unlist(.)
+
+          tempMuSum <- tempMuSum + colSums(AikMat[, tempAik] * sweep(x = allZ, MARGIN = 2,
+                                                                     STATS = tempHvec, FUN="*"))
+          tempDenom <- tempDenom + rep(J * Aik_alln[tempAik], length(tempDenom)) * abs(tempHvec)
+        } # done looping for one l, m
+        whichZero <- which(tempDenom == 0)
+        tempDenom[whichZero] <- 1
+        muInfo[[b_it + 1]][, m_it] <- tempMuSum / tempDenom
+
+        # make sure mean constraint is satisfied
+        if (b_it < B) {
+          whichLarger <- which(muInfo[[b_it + 1]][, m_it] > maxMeans)
+          if (length(whichLarger) > 0) {
+            muInfo[[b_it + 1]][whichLarger, m_it] <- maxMeans[whichLarger]
+          }
+        } # done with mean constraint
+
+      } # done looping through m
+
+      # set the max means
+      if (b_it == B) {
+        maxMeans <- apply(muInfo[[b_it + 1]], 1, min)
+      }
+    } # done updating means
+
+    ###############################################################################################
+    # find difference
+    allParams <- c(unlist(piInfo), unlist(muInfo))
+    diffParams <- sum((allParams - oldParams)^2)
+
+    # update
+    oldParams <- allParams
+    iter <- iter + 1
+    cat(iter, " - ", diffParams, "\n", allParams, "\n")
+  }
+
+  # calculate local fdrs
+  nullCols <- which(allPi[, 3] < K)
+  probNull <- apply(conditionalMat[, nullCols], 1, sum)
+  lfdrResults <- probNull / probZ
+
+  return(list(piInfo = piInfo, muInfo = muInfo, iter = iter,
+              lfdrResults = lfdrResults))
+}

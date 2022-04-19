@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1650316403422.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "3414692A",
+    "lastKnownWriteTime" : 1650328558,
+    "last_content_update" : 1650328558421,
+    "path" : "~/Box/aaaWork/Research/EmpBayesMed/2022-04-07/sim2d_ind_v3.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "577,0",
+        "scrollLine" : "555"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
