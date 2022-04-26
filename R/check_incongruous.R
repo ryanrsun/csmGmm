@@ -45,27 +45,29 @@ check_incongruous <- function(zMatrix, lfdrVec) {
       }
       tempStats <- tempStats[toKeep, ]
     } # end finding quadrant
-    if (length(idxVec) < 1) {next}
+    if (length(idxVec) <= 1) {next}
     # take absolute value
     tempStats <- abs(tempStats)
 
     # order by lfdr
-    newOrder <- order(tempLfdr)
-    tempStats <- tempStats[newOrder, ]
-    tempLfdr <- tempLfdr[newOrder]
-    idxVec <- idxVec[newOrder]
+    tempDat <- tempStats %>% as.data.frame(.) %>%
+      magrittr::set_colnames(c("Z1", "Z2")) %>%
+      mutate(lfdr = tempLfdr) %>%
+      mutate(idx = idxVec) 
 
     # check for incongruous
     if (K == 2) {
-      incongruousVec <- sapply(1:nrow(tempStats),FUN = find_2d,  allTestStats = tempStats)
+      tempDat <- tempDat %>% arrange(tempLfdr, desc(Z1), desc(Z2))
+      incongruousVec <- sapply(1:nrow(tempDat),FUN = find_2d,  allTestStats = as.matrix(tempDat %>% select(Z1, Z2)))
     } else if (K == 3) {
-      incongruousVec <- sapply(1:nrow(tempStats), FUN = find_3d, allTestStats = tempStats)
+      tempDat <- tempDat %>% arrange(tempLfdr, desc(Z1), desc(Z2), desc(Z3))
+      incongruousVec <- sapply(1:nrow(tempDat), FUN = find_3d, allTestStats = as.matrix(tempDat %>% select(Z1, Z2, Z3)))
     } else {
       error("only support for 2-3 dimensions right now")
     }
 
     # get the bad indices
-    badIdx <- c(badIdx, idxVec[which(incongruousVec > 0)])
+    badIdx <- c(badIdx, tempDat$idx[which(incongruousVec > 0)])
   }
 
   return(badIdx)
