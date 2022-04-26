@@ -34,7 +34,7 @@ calc_dens_ind_2d <- function(x, Zmat) {
 #'
 calc_dens_ind_3d <- function(x, Zmat) {
   # right now, only for 2 or 3 dimensions
-  dnorm(Zmat[, 1], mean=x[1], sd=1) * dnorm(Zmat[, 2], mean=x[2], sd=1) * dnorm(Zmat[, 2], mean=x[3], sd=1)
+  dnorm(Zmat[, 1], mean=x[1], sd=1) * dnorm(Zmat[, 2], mean=x[2], sd=1) * dnorm(Zmat[, 3], mean=x[3], sd=1)
 }
 
 
