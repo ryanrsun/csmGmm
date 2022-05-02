@@ -51,16 +51,19 @@ check_incongruous <- function(zMatrix, lfdrVec) {
 
     # order by lfdr
     tempDat <- tempStats %>% as.data.frame(.) %>%
-      magrittr::set_colnames(c("Z1", "Z2")) %>%
       mutate(lfdr = tempLfdr) %>%
       mutate(idx = idxVec) 
 
     # check for incongruous
     if (K == 2) {
-      tempDat <- tempDat %>% arrange(tempLfdr, desc(Z1), desc(Z2))
+      colnames(tempDat)[1:2] <- c("Z1", "Z2")
+      tempDat <- tempDat %>% 
+        arrange(tempLfdr, desc(Z1), desc(Z2))
       incongruousVec <- sapply(1:nrow(tempDat),FUN = find_2d,  allTestStats = as.matrix(tempDat %>% select(Z1, Z2)))
     } else if (K == 3) {
-      tempDat <- tempDat %>% arrange(tempLfdr, desc(Z1), desc(Z2), desc(Z3))
+      colnames(tempDat)[1:3] <- c("Z1", "Z2", "Z3") 
+      tempDat <- tempDat %>% 
+        arrange(tempLfdr, desc(Z1), desc(Z2), desc(Z3))
       incongruousVec <- sapply(1:nrow(tempDat), FUN = find_3d, allTestStats = as.matrix(tempDat %>% select(Z1, Z2, Z3)))
     } else {
       error("only support for 2-3 dimensions right now")
