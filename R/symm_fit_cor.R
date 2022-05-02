@@ -101,7 +101,7 @@ symm_fit_cor <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5
       sweep(., MARGIN=2, STATS=allPi[, 1], FUN="*")
     probZ <- apply(conditionalMat, 1, sum)
     AikMat <- conditionalMat %>% sweep(., MARGIN=1, STATS=probZ, FUN="/")
-    Aik_alln <- apply(AikMat, 2, sum) / n
+    Aik_alln <- apply(AikMat, 2, sum) / J
 
     ###############################################################################################
     # this is the M step for probabilities of hypothesis space
@@ -130,9 +130,9 @@ symm_fit_cor <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5
           tempHvec <- tempHmat %>% select(-bl, -sl, -l) %>% slice(idx_it) %>% unlist(.)
           LsigInvL <- diag(tempHvec) %*% sigInv %*% diag(tempHvec)
 
-          tempLeftSum <- tempLeftSum + colSums(AikMat[, tempAik] * sweep(x = allZ %*% sigInv, MARGIN = 2,
+          tempLeftSum <- tempLeftSum + colSums(AikMat[, tempAik] * sweep(x = testStats %*% sigInv, MARGIN = 2,
                                                                          STATS = tempHvec, FUN="*"))
-          tempRightSum <- tempRightSum + rep(J * Aik_alln[tempAik], length(tempDenom)) * LsigInvL
+          tempRightSum <- tempRightSum + rep(J * Aik_alln[tempAik], length(tempRightSum)) * LsigInvL
         } # done looping for one l, m
 
         # matrix inverse only for alternative
