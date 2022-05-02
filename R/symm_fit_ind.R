@@ -95,11 +95,19 @@ symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
     # this is the E step where we calculate Pr(Z|c_l,m) for all c_l,m.
     # each l,m is one column.
     # only independence case for now
-    conditionalMat <- sapply(X=data.frame(allMu), FUN=calc_dens_ind_2d, Zmat = testStats) %>%
-      sweep(., MARGIN=2, STATS=allPi[, 1], FUN="*")
+    if (ncol(testStats) == 2) {
+      conditionalMat <- sapply(X=data.frame(allMu), FUN=calc_dens_ind_2d, Zmat = testStats) %>%
+        sweep(., MARGIN=2, STATS=allPi[, 1], FUN="*")
+    } else if (ncol(testStats) == 3) {
+      conditionalMat <- sapply(X=data.frame(allMu), FUN=calc_dens_ind_3d, Zmat = testStats) %>%
+        sweep(., MARGIN=2, STATS=allPi[, 1], FUN="*")
+    } else {
+      conditionalMat <- sapply(X=data.frame(allMu), FUN=calc_dens_ind_multiple, Zmat = testStats) %>%
+        sweep(., MARGIN=2, STATS=allPi[, 1], FUN="*")
+    } 
     probZ <- apply(conditionalMat, 1, sum)
     AikMat <- conditionalMat %>% sweep(., MARGIN=1, STATS=probZ, FUN="/")
-    Aik_alln <- apply(AikMat, 2, sum) / n
+    Aik_alln <- apply(AikMat, 2, sum) / J
 
     ###############################################################################################
     # this is the M step for probabilities of hypothesis space
@@ -127,7 +135,7 @@ symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
           tempAik <- AikIdx[idx_it]
           tempHvec <- tempHmat %>% select(-bl, -sl, -l) %>% slice(idx_it) %>% unlist(.)
 
-          tempMuSum <- tempMuSum + colSums(AikMat[, tempAik] * sweep(x = allZ, MARGIN = 2,
+          tempMuSum <- tempMuSum + colSums(AikMat[, tempAik] * sweep(x = testStats, MARGIN = 2,
                                                                      STATS = tempHvec, FUN="*"))
           tempDenom <- tempDenom + rep(J * Aik_alln[tempAik], length(tempDenom)) * abs(tempHvec)
         } # done looping for one l, m
