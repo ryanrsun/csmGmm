@@ -23,7 +23,7 @@
 #' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
 #' symm_fit_ind(testStats = testStats, initMuList = initMutLIst, initPiList = initPiList)
 #'
-symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
+symm_fit_ind <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5)) {
 
   J <- nrow(testStats)
   # number of dimensions
@@ -40,12 +40,16 @@ symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
     blVec <- blVec + 2^(K - k_it) * abs(Hmat[, k_it])
     slVec <- slVec + abs(Hmat[, k_it])
   }
+  # symmetric alternative
+  symAltVec <- ifelse(apply(Hmat[, 1:K], 1, sum) == K | apply(Hmat[, 1:K], 1, sum) == -K, 1, 0)
   # sort Hmat
   Hmat <- Hmat %>% mutate(bl = blVec) %>%
     mutate(sl = slVec) %>%
+    mutate(symAlt = symAltVec) %>% 
     arrange(blVec, Var1, Var2) %>%
-    mutate(l = 0:(nrow(.) - 1))
-
+    mutate(l = 0:(nrow(.) - 1)) %>%
+    relocate(l, .before = symAlt)
+  
   # initialize
   # the muInfo and piInfo are lists that hold the information in a more compact manner.
   # the allMu and allPi are matrices that repeat the information so the calculations can be performed faster.
@@ -64,11 +68,11 @@ symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
 
     # allPi holds the probabilities of each configuration (c 1), the bl of that
     # configuration (c 2), the sl of that configuration (c3), the m of that configuration (c 4),
-    # and the l of that configuration (c 5),
+    # the l of that configuration (c 5), and whether it's part of the symmetric alternative (c 6).
 
     # number of rows in piMat is L if Mb = 1 for all b.
     # number of rows is \sum(l = 0 to L-1) {Mbl}
-    allPi <- c(piInfo[[1]], 0, 0, 1, 0)
+    allPi <- c(piInfo[[1]], 0, 0, 1, 0, 0)
 
     # allMu holds the mean vectors for each configuration in each row, number of columns is K
     allMu <- rep(0, K)
@@ -82,14 +86,14 @@ symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
       # loop through possible m for this value of bl
       for (m_it in 1:MbVec[b_it + 1]) {
         allPi <- rbind(allPi, cbind(rep(piInfo[[b_it + 1]][m_it] / (2^tempH$sl[1]), nrow(tempH)), tempH$bl,
-                                    tempH$sl, rep(m_it, nrow(tempH)), tempH$l))
+                                    tempH$sl, rep(m_it, nrow(tempH)), tempH$l, tempH$symAlt))
 
         for (h_it in 1:nrow(tempH)) {
-          allMu <- cbind(allMu, unlist(tempH %>% select(-bl, -sl, -l) %>% slice(h_it)) * muInfo[[b_it + 1]][, m_it])
+          allMu <- cbind(allMu, unlist(tempH %>% select(-bl, -sl, -l, -symAlt) %>% slice(h_it)) * muInfo[[b_it + 1]][, m_it])
         }
       } # done looping through different m
     } # dont looping through bl
-    colnames(allPi) <- c("Prob", "bl", "sl", "m", "l")
+    colnames(allPi) <- c("Prob", "bl", "sl", "m", "l", "symAlt")
 
     ##############################################################################################
     # this is the E step where we calculate Pr(Z|c_l,m) for all c_l,m.
@@ -133,7 +137,7 @@ symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
         AikIdx <- which(allPi[, 2] == b_it & allPi[, 4] == m_it)
         for (idx_it in 1:length(AikIdx)) {
           tempAik <- AikIdx[idx_it]
-          tempHvec <- tempHmat %>% select(-bl, -sl, -l) %>% slice(idx_it) %>% unlist(.)
+          tempHvec <- tempHmat %>% select(-bl, -sl, -l, -symAlt) %>% slice(idx_it) %>% unlist(.)
 
           tempMuSum <- tempMuSum + colSums(AikMat[, tempAik] * sweep(x = testStats, MARGIN = 2,
                                                                      STATS = tempHvec, FUN="*"))
@@ -171,7 +175,11 @@ symm_fit_ind <- function(testStats, initMuList, initPiList, eps = 10^(-5)) {
   }
 
   # calculate local fdrs
-  nullCols <- which(allPi[, 3] < K)
+  if (sameDirAlt) {
+    nullCols <- which(allPi[, 6] == 0)
+  } else { 
+    nullCols <- which(allPi[, 3] < K)
+  } 
   probNull <- apply(conditionalMat[, nullCols], 1, sum)
   lfdrResults <- probNull / probZ
 
