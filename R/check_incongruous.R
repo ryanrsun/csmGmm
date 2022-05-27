@@ -19,6 +19,7 @@ check_incongruous <- function(zMatrix, lfdrVec) {
 
   # remove lfdr = 1
   lessThanOne <- which(lfdrVec < 0.99)
+  if (length(lessThanOne) <= 1) {return(c())} 
   zMatrix <- zMatrix[lessThanOne, ]
   lfdrVec <- lfdrVec[lessThanOne]
 
