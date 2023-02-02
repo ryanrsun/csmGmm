@@ -24,7 +24,7 @@
 #' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
 #' symm_fit_cor(testStats = testStats, corMat = cor(testStats), initMuList = initMuList, initPiList = initPiList)
 #'
-symm_fit_cor <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5)) {
+symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5)) {
 
   sigInv = solve(corMat)
   J <- nrow(testStats)
@@ -114,8 +114,8 @@ symm_fit_cor <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5
 
     # M step for the means
     # loop through values of bl
-    # do the alternative first
-    for (b_it in B:1) {
+    # do the alternative last, enforce that it must be larger in magnitude than the nulls
+    for (b_it in 1:B) {
 
       tempHmat <- Hmat %>% filter(bl == b_it)
       # loop through m
@@ -145,19 +145,16 @@ symm_fit_cor <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5
         }
 
         # make sure mean constraint is satisfied
-        if (b_it < B) {
-          whichLarger <- which(muInfo[[b_it + 1]][, m_it] > maxMeans)
-          if (length(whichLarger) > 0) {
-            muInfo[[b_it + 1]][whichLarger, m_it] <- maxMeans[whichLarger]
-          }
+        if (b_it == B) {
+          maxMeans <- find_max_means(muInfo)
+          whichSmaller <- which(muInfo[[b_it + 1]][, m_it] < maxMeans)
+          if (length(whichSmaller) > 0) {
+            muInfo[[b_it + 1]][whichSmaller, m_it] <- maxMeans[whichSmaller]
+          } 
         } # done with mean constraint
 
       } # done looping through m
 
-      # set the max means
-      if (b_it == B) {
-        maxMeans <- apply(muInfo[[b_it + 1]], 1, min)
-      }
     } # done updating means
 
     ###############################################################################################
