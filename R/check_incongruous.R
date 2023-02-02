@@ -34,7 +34,7 @@ check_incongruous <- function(zMatrix, lfdrVec) {
     tempStats <- zMatrix
     tempLfdr <- lfdrVec
     for (k_it in 1:K) {
-      if (class(tempStats) == "numeric") {break}
+      if (class(tempStats)[1] == "numeric") {break}
       if (quadrants[quad_it, k_it] == -1) {
         toKeep <- which(tempStats[, k_it] < 0 )
         idxVec <- idxVec[toKeep]
