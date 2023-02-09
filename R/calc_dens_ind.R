@@ -1,6 +1,6 @@
 #' calc_dens_ind.R
 #'
-#' Calculate the density of bivariate normal under fitted acsGmm.
+#' Calculate J bivariate normal densities (both dimensions are independent) under fitted csmGmm.
 #'
 #' @param x 2*1 vector of means.
 #' @param Zmat J*2 matrix of test statistics.
@@ -19,7 +19,7 @@ calc_dens_ind_2d <- function(x, Zmat) {
 }
 
 
-#' Calculate the density of trivariate normal under fitted acsGmm.
+#' Calculate J trivariate normal densities (all dimensions are independent) under fitted csmGmm.
 #'
 #' @param x 3*1 vector of means.
 #' @param Zmat J*3 matrix of test statistics.
@@ -39,7 +39,7 @@ calc_dens_ind_3d <- function(x, Zmat) {
 
 
 
-#' Calculate the density of multivariate normal under fitted acsGmm.
+#' Calculate the density of K-dimensional multivariate normal (all dimensions are independent) under fitted acsGmm.
 #'
 #' @param x K*1 vector of means.
 #' @param Zmat J*K matrix of test statistics.
