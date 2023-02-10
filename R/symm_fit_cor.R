@@ -133,7 +133,7 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
 
           tempLeftSum <- tempLeftSum + colSums(AikMat[, tempAik] * sweep(x = testStats %*% sigInv, MARGIN = 2,
                                                                          STATS = tempHvec, FUN="*"))
-          tempRightSum <- tempRightSum + rep(J * Aik_alln[tempAik], length(tempRightSum)) * LsigInvL
+          tempRightSum <- tempRightSum + (J * Aik_alln[tempAik]) * LsigInvL
         } # done looping for one l, m
 
         # matrix inverse only for alternative
