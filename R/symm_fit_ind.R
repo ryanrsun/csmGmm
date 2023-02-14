@@ -7,6 +7,7 @@
 #' @param initPiList List of 2^K elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary representation.
 #' @param sameDirAlt Boolean, set to TRUE for replication testing, which uses a smaller alternative space.
 #' @param eps Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.
+#' @param checkpoint Boolean, set to TRUE to print iterations of EM
 #'
 #' @return A list with the elements:
 #' \item{muInfo}{List with same dimensions as initMuList, holds the final mean parameters.}
@@ -25,7 +26,7 @@
 #' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
 #' symm_fit_ind_EM(testStats = testStats, initMuList = initMutLIst, initPiList = initPiList)
 #'
-symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5)) {
+symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5), checkpoint=TRUE) {
 
   # number of composite null hypotheses
   J <- nrow(testStats)
@@ -171,7 +172,9 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
     # update
     oldParams <- allParams
     iter <- iter + 1
-    cat(iter, " - ", diffParams, "\n", allParams, "\n")
+    if (checkpoint) {
+      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+    }
   }
 
   # calculate local fdrs

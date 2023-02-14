@@ -7,6 +7,7 @@
 #' @param initMuList List of 2^K elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.
 #' @param initPiList List of 2^K elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.
 #' @param eps Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.
+#' @param checkpoint Boolean, set to TRUE to print iterations of EM.
 #'
 #' @return A list with the elements:
 #' \item{muInfo}{List with same dimensions as initMuList, holds the final mean parameters.}
@@ -25,7 +26,7 @@
 #' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
 #' symm_fit_cor_EM(testStats = testStats, corMat = cor(testStats), initMuList = initMuList, initPiList = initPiList)
 #'
-symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5)) {
+symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
 
   sigInv = solve(corMat)
   J <- nrow(testStats)
@@ -166,7 +167,9 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
     # update
     oldParams <- allParams
     iter <- iter + 1
-    cat(iter, " - ", diffParams, "\n", allParams, "\n")
+    if (checkpoint) {
+      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+    }
   }
 
   # calculate local fdrs
