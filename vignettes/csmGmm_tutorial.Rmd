@@ -66,10 +66,8 @@ outputDF <- data.frame(Z1 = medDat[, 1], Z2 = medDat[, 2], origIdx = 1:J,
     mutate(Rej = ifelse(lfdrAvg < 0.1, 1, 0))
 
 # number of false rejections
-cat("Number of false rejections")
 length(which(outputDF$Causal == 0 & outputDF$Rej == 1))
 # number of true rejections
-cat("Number of true rejections")
 length(which(outputDF$Causal == 1 & outputDF$Rej == 1))
 
 ```
@@ -124,10 +122,8 @@ c_outputDF <- data.frame(Z1 = pleioDat[, 1], Z2 = pleioDat[, 2], origIdx = 1:J,
     mutate(Rej = ifelse(lfdrAvg < 0.1, 1, 0))
 
 # number of false rejections
-cat("Number of false rejections")
 length(which(c_outputDF$Causal == 0 & c_outputDF$Rej == 1))
 # number of true rejections
-cat("Number of true rejections")
 length(which(c_outputDF$Causal == 1 & c_outputDF$Rej == 1))
 
 ```
@@ -180,10 +176,8 @@ r_outputDF <- data.frame(Z1 = repDat[, 1], Z2 = repDat[, 2], origIdx = 1:J,
     mutate(Rej = ifelse(lfdrAvg < 0.1, 1, 0))
 
 # number of false rejections
-cat("Number of false rejections")
 length(which(r_outputDF$Causal == 0 & r_outputDF$Rej == 1))
 # number of true rejections
-cat("Number of true rejections")
 length(which(r_outputDF$Causal == 1 & r_outputDF$Rej == 1))
 
 ```
