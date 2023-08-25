@@ -1,6 +1,6 @@
 #' calc_dens_cor.R
 #'
-#' Calculate the density of bivariate normal under fitted c-acsGmm.
+#' For J*2 matrix of J sets, calculate the density of bivariate normal under fitted c-csmGmm.
 #'
 #' @param x 2*1 vector of means.
 #' @param Zmat J*2 matrix of test statistics.

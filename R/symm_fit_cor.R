@@ -1,12 +1,13 @@
 #' symm_fit_cor.R
 #'
-#' Fit the correlated alternative cardinality symmetric GMM for sets of correlated elements. Currently restricted to K=2.
+#' Fit the correlated csmGmm for sets of correlated elements. Currently restricted to K=2.
 #'
 #' @param testStats J*K matrix of test statistics where J is the number of sets and K is number of elements in each set.
 #' @param corMat K*K matrix that describes the correlation structure of each set.
-#' @param initMuList List of 2^L - 1 elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.
-#' @param initPiList List of 2^L - 1 elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.
+#' @param initMuList List of 2^K elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.
+#' @param initPiList List of 2^K elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.
 #' @param eps Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.
+#' @param checkpoint Boolean, set to TRUE to print iterations of EM.
 #'
 #' @return A list with the elements:
 #' \item{muInfo}{List with same dimensions as initMuList, holds the final mean parameters.}
@@ -18,13 +19,14 @@
 #' @export
 #' @examples
 #' set.seed(0)
+#' maxMeans = matrix(data=c(8,8), nrow=2)
 #' testStats <- cbind(rnorm(10^5), rnorm(10^5))
 #' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2),
 #' matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
 #' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
-#' symm_fit_cor(testStats = testStats, corMat = cor(testStats), initMuList = initMuList, initPiList = initPiList)
+#' symm_fit_cor_EM(testStats = testStats, corMat = cor(testStats), initMuList = initMuList, initPiList = initPiList)
 #'
-symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5)) {
+symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
 
   sigInv = solve(corMat)
   J <- nrow(testStats)
@@ -132,7 +134,7 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
 
           tempLeftSum <- tempLeftSum + colSums(AikMat[, tempAik] * sweep(x = testStats %*% sigInv, MARGIN = 2,
                                                                          STATS = tempHvec, FUN="*"))
-          tempRightSum <- tempRightSum + rep(J * Aik_alln[tempAik], length(tempRightSum)) * LsigInvL
+          tempRightSum <- tempRightSum + (J * Aik_alln[tempAik]) * LsigInvL
         } # done looping for one l, m
 
         # matrix inverse only for alternative
@@ -150,7 +152,7 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
           whichSmaller <- which(muInfo[[b_it + 1]][, m_it] < maxMeans)
           if (length(whichSmaller) > 0) {
             muInfo[[b_it + 1]][whichSmaller, m_it] <- maxMeans[whichSmaller]
-          } 
+          }
         } # done with mean constraint
 
       } # done looping through m
@@ -165,7 +167,9 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
     # update
     oldParams <- allParams
     iter <- iter + 1
-    cat(iter, " - ", diffParams, "\n", allParams, "\n")
+    if (checkpoint) {
+      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+    }
   }
 
   # calculate local fdrs

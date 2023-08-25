@@ -1,0 +1,186 @@
+---
+title: "csmGmm Tutorial"
+author: "Ryan Sun"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+    %\VignetteIndexEntry{Tutorial}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+## Introduction 
+The csmGmm package implements the conditionally symmetric multidimensional Gaussian mixture model (csmGmm) for large-scale testing of composite null hypotheses in genetic association applications such as mediation analysis, pleiotropy analysis, and replication analysis. In such analyses, we typically have K sets of test statistics corresponding to the same J genetic variants, where K is a small number (e.g. 2 or 3) and J is large (e.g. 1 million). For each SNP, we want to know if we can reject all K individual nulls.
+
+For example, in a genetic mediation study, the goal is often to determine whether a single nucleotide polymorphism's (SNP) effect on disease risk is mediated through expression of a risk gene. In other words, the SNP affects gene expression, which perturbs disease risk. To do this analysis, we test the effect of the SNP on gene expression in a standard regression model, and then we can test the effect of the gene expression on disease risk in another regression model. Then we have two test statistics, and under some assumptions, there is a mediated effect if we can reject the null for each individual test statistic.
+
+In a pleiotropy study, we want to know if the same SNP affects risk of two different diseases. We can fit two regression models, one for the effect of the SNP on the first disease, and one for the effect of the SNP on the second disease. The SNP is said to be pleiotropic if we can reject both individual nulls. There may also be more than two diseases of interest. The csmGmm allows for this. Test statistics for the two diseases may come from the same dataset, and thus they would be correlated. The c-csmGmm can handle this situation.
+
+In a replication study, we want to know if the same SNP is associated with a disease in two independent datasets. We fit two regression models, and the SNP is said to be replicated if we can reject both individual nulls and the direction of effects is the same. The r-csmGmm is used for this situation.
+
+The local false discovery rate is used to perform inference. Each set of test statistics receives an lfdr-value. We then sort the lfdr-values in increasing order. For a given false discovery rate $q$, we reject the first $r$ sets, where $r$ is the largest index such that the average of the first $r$ lfdr-values is less than or equal to $q$.
+
+## Worked Example of csmGmm
+
+Suppose we are performing a mediation study with one SNP and 40,000 gene expressions of interest. We generate 40,000 sets of two test statistics (a 40,000*2 matrix). Of these 40,000 sets, let 2% have an association in the first column only, 2% have an association in the second column only, and 0.2% have an association in both columns. The other 95.8% have no association in either column.
+
+When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 71 correct rejections and 8 incorrect rejections, for a false discovery proportion of 8/79=0.0101 in this example. There were 80 causal sets, and the csmGmm found 71 of them. For full simulation results, please see our manuscript.
+
+Note that we made the problem even more difficult here by generating all associations with a positive effect size (instead of half negative and half positive, which would be more symmetrical). Still, the csmGmm worked well.
+
+```{r}
+library(csmGmm)
+library(dplyr)
+
+# number of SNPs and proportion in each case
+J <- 40000
+K <- 2
+case0 <- 0.958 * J
+case1 <- 0.02 * J
+case2 <- 0.02 * J
+case3 <- 0.002 * J
+# effect size of association
+effSize <- 4
+
+# generate data
+set.seed(0)
+medDat <- rbind(cbind(rnorm(n=case0), rnorm(n=case0)),
+                cbind(rnorm(n=case1, mean=effSize), rnorm(n=case1)),
+                cbind(rnorm(n=case2), rnorm(n=case2, mean=effSize)),
+                cbind(rnorm(n=case3, mean=effSize), rnorm(n=case3, mean=effSize)))
+
+# intial starting values
+maxMeans = matrix(data=c(8,8), nrow=2)
+initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
+initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
+# fit the model
+csmGmmOutput <- symm_fit_ind_EM(testStats = medDat, initMuList = initMuList, initPiList = initPiList,
+                                checkpoint=FALSE)
+
+# rejections at q=0.1
+outputDF <- data.frame(Z1 = medDat[, 1], Z2 = medDat[, 2], origIdx = 1:J,
+                         lfdrValue=csmGmmOutput$lfdrResults) %>%
+    arrange(lfdrValue) %>%
+    mutate(lfdrAvg = cummean(lfdrValue)) %>%
+    mutate(Causal = ifelse(origIdx >= J - case3 + 1, 1, 0)) %>%
+    mutate(Rej = ifelse(lfdrAvg < 0.1, 1, 0))
+
+# number of false rejections
+length(which(outputDF$Causal == 0 & outputDF$Rej == 1))
+# number of true rejections
+length(which(outputDF$Causal == 1 & outputDF$Rej == 1))
+
+```
+
+
+## Worked Example of c-csmGmm
+
+Sometimes the test statistics in a set may be correlated. Suppose we have 100,000 SNPs in a pleiotropy study of two correlated outcomes in the same dataset. We let the two test statistics be correlated at $\rho=0.3$,
+and we use the same proportions of associations as above.
+
+When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 69 correct rejections and 5 incorrect rejections, for a false discovery proportion of 5/74=0.068 in this example. There were 80 causal sets, and the csmGmm found 69 of them. For full simulation results, please see our manuscript.
+
+
+```{r}
+
+# number of SNPs and proportion in each case
+J <- 40000
+K <- 2
+case0 <- 0.958 * J
+case1 <- 0.02 * J
+case2 <- 0.02 * J
+case3 <- 0.002 * J
+# effect size of association
+effSize <- 4
+
+# generate data
+set.seed(0)
+corMat <- matrix(data=c(1, 0.3, 0.3, 1), nrow=2)
+pleioDat <- rbind(mvtnorm::rmvnorm(n=case0, sigma=corMat),
+                mvtnorm::rmvnorm(n=case1, mean=c(effSize, 0), sigma=corMat),
+                mvtnorm::rmvnorm(n=case2, mean=c(0, effSize), sigma=corMat),
+                mvtnorm::rmvnorm(n=case3, mean=c(effSize, effSize), sigma=corMat))
+
+# estimate the correlation from data
+estCor <- cor(pleioDat)[1,2]
+estCorMat <- matrix(data=c(1, estCor, estCor, 1), nrow=2)
+
+# intial starting values
+maxMeans = matrix(data=c(8,8), nrow=2)
+initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=2, min=0, max=min(maxMeans)), nrow=2, ncol=1), matrix(data=runif(n=2, min=0, max=min(maxMeans)), nrow=2, ncol=1), maxMeans)
+initPiList <- list(c(0.82), c(0.04),c(0.04), c(0.1))
+# fit the model
+c_csmGmm <- symm_fit_cor_EM(testStats = pleioDat, initMuList = initMuList, initPiList = initPiList,
+                            corMat = estCorMat, checkpoint=FALSE)
+
+# rejections at q=0.1
+c_outputDF <- data.frame(Z1 = pleioDat[, 1], Z2 = pleioDat[, 2], origIdx = 1:J,
+                         lfdrValue=c_csmGmm$lfdrResults) %>%
+    arrange(lfdrValue) %>%
+    mutate(lfdrAvg = cummean(lfdrValue)) %>%
+    mutate(Causal = ifelse(origIdx >= J - case3 + 1, 1, 0)) %>%
+    mutate(Rej = ifelse(lfdrAvg < 0.1, 1, 0))
+
+# number of false rejections
+length(which(c_outputDF$Causal == 0 & c_outputDF$Rej == 1))
+# number of true rejections
+length(which(c_outputDF$Causal == 1 & c_outputDF$Rej == 1))
+
+```
+
+
+## Worked Example of r-csmGmm
+
+When testing for replication, we reject the null only if the associations exist and point in the same direction. Thus in this example, we will generate data with both positive and negative effect sizes.
+
+When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 35 correct rejections and 2 incorrect rejections, for a false discovery proportion of 2/35=0.057 in this example. There were 40 causal sets, and the r-csmGmm found 33 of them. For full simulation results, please see our manuscript.
+
+```{r}
+
+# number of SNPs and proportion in each case
+J <- 40000
+K <- 2
+case0 <- 0.958 * J
+case1 <- 0.02 * J
+case2 <- 0.02 * J
+case3 <- 0.002 * J
+# effect size of association
+effSize <- 4
+
+# generate data
+set.seed(0)
+repDat <- rbind(cbind(rnorm(n=case0), rnorm(n=case0)),
+                cbind(rnorm(n=case1/2, mean=effSize), rnorm(n=case1/2)),
+                cbind(rnorm(n=case1/2, mean=-effSize), rnorm(n=case1/2)),
+                cbind(rnorm(n=case2/2), rnorm(n=case2/2, mean=effSize)),
+                cbind(rnorm(n=case2/2), rnorm(n=case2/2, mean=-effSize)),
+                cbind(rnorm(n=case3/4, mean=-effSize), rnorm(n=case3/4, mean=effSize)),
+                cbind(rnorm(n=case3/4, mean=effSize), rnorm(n=case3/4, mean=-effSize)),
+                cbind(rnorm(n=case3/4, mean=effSize), rnorm(n=case3/4, mean=effSize)),
+                cbind(rnorm(n=case3/4, mean=-effSize), rnorm(n=case3/4, mean=-effSize)))
+
+# intial starting values
+maxMeans = matrix(data=c(8,8), nrow=2)
+initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
+initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
+# fit the model
+r_csmGmm <- symm_fit_ind_EM(testStats = repDat, initMuList = initMuList, initPiList = initPiList,
+                                sameDirAlt=TRUE, checkpoint=FALSE)
+
+# rejections at q=0.1
+r_outputDF <- data.frame(Z1 = repDat[, 1], Z2 = repDat[, 2], origIdx = 1:J,
+                         lfdrValue=r_csmGmm$lfdrResults) %>%
+    arrange(lfdrValue) %>%
+    mutate(lfdrAvg = cummean(lfdrValue)) %>%
+    mutate(Causal = ifelse(origIdx >= J - case3/2 + 1, 1, 0)) %>%
+    mutate(Rej = ifelse(lfdrAvg < 0.1, 1, 0))
+
+# number of false rejections
+length(which(r_outputDF$Causal == 0 & r_outputDF$Rej == 1))
+# number of true rejections
+length(which(r_outputDF$Causal == 1 & r_outputDF$Rej == 1))
+
+```
+
+
+Questions or novel applications? Please let me know!  Contact information can be found in the package description.

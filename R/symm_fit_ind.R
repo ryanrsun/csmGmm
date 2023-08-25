@@ -1,15 +1,17 @@
 #' symm_fit_ind.R
 #'
-#' Fit the alternative cardinality symmetric GMM for sets of independent elements
+#' Fit the conditionally symmetric multidimensional Gaussian mixture model for sets of independent elements
 #'
 #' @param testStats J*K matrix of test statistics where J is the number of sets and K is number of elements in each set.
-#' @param initMuList List of 2^L - 1 elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.
-#' @param initPiList List of 2^L - 1 elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.
+#' @param initMuList List of 2^K elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary representation.
+#' @param initPiList List of 2^K elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary representation.
+#' @param sameDirAlt Boolean, set to TRUE for replication testing, which uses a smaller alternative space.
 #' @param eps Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.
+#' @param checkpoint Boolean, set to TRUE to print iterations of EM
 #'
 #' @return A list with the elements:
 #' \item{muInfo}{List with same dimensions as initMuList, holds the final mean parameters.}
-#' \item{piInfo}{List with same dimensions as initPiList, holds the final probability parameters.}
+#' \item{piInfo}{List with same dimensions as initPiList, holds the final mixture proportions}
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
 #' @importFrom stats runif
@@ -18,13 +20,15 @@
 #' @examples
 #' set.seed(0)
 #' testStats <- cbind(rnorm(10^5), rnorm(10^5))
+#' maxMeans = matrix(data=c(8,8), nrow=2)
 #' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2),
 #' matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
 #' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
-#' symm_fit_ind(testStats = testStats, initMuList = initMutLIst, initPiList = initPiList)
+#' symm_fit_ind_EM(testStats = testStats, initMuList = initMutLIst, initPiList = initPiList)
 #'
-symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5)) {
+symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5), checkpoint=TRUE) {
 
+  # number of composite null hypotheses
   J <- nrow(testStats)
   # number of dimensions
   K <- ncol(testStats)
@@ -45,11 +49,11 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
   # sort Hmat
   Hmat <- Hmat %>% mutate(bl = blVec) %>%
     mutate(sl = slVec) %>%
-    mutate(symAlt = symAltVec) %>% 
+    mutate(symAlt = symAltVec) %>%
     arrange(blVec, Var1, Var2) %>%
     mutate(l = 0:(nrow(.) - 1)) %>%
     relocate(l, .before = symAlt)
-  
+
   # initialize
   # the muInfo and piInfo are lists that hold the information in a more compact manner.
   # the allMu and allPi are matrices that repeat the information so the calculations can be performed faster.
@@ -108,7 +112,7 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
     } else {
       conditionalMat <- sapply(X=data.frame(allMu), FUN=calc_dens_ind_multiple, Zmat = testStats) %>%
         sweep(., MARGIN=2, STATS=allPi[, 1], FUN="*")
-    } 
+    }
     probZ <- apply(conditionalMat, 1, sum)
     AikMat <- conditionalMat %>% sweep(., MARGIN=1, STATS=probZ, FUN="/")
     Aik_alln <- apply(AikMat, 2, sum) / J
@@ -168,15 +172,17 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
     # update
     oldParams <- allParams
     iter <- iter + 1
-    cat(iter, " - ", diffParams, "\n", allParams, "\n")
+    if (checkpoint) {
+      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+    }
   }
 
   # calculate local fdrs
   if (sameDirAlt) {
     nullCols <- which(allPi[, 6] == 0)
-  } else { 
+  } else {
     nullCols <- which(allPi[, 3] < K)
-  } 
+  }
   probNull <- apply(conditionalMat[, nullCols], 1, sum)
   lfdrResults <- probNull / probZ
 
