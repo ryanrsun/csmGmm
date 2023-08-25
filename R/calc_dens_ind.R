@@ -53,9 +53,10 @@ calc_dens_ind_3d <- function(x, Zmat) {
 #' calc_dens_ind_multiple(x, Zmat)
 #'
 calc_dens_ind_multiple <- function(x, Zmat) {
-  K <- ncol(zMat)
-  tempProd <- rep(1, nrow(zMat))
+  K <- ncol(Zmat)
+  tempSum <- rep(0, nrow(Zmat))
   for (k_it in 1:K) {
-    tempProd <- tempProd * dnorm(Zmat[, k_it], mean=x[k_it], sd=1)
+    tempSum <- tempSum + dnorm(Zmat[, k_it], mean=x[k_it], sd=1, log=TRUE)
   }
+  exp(tempSum)
 }
