@@ -14,8 +14,8 @@
 #' Zmat <- cbind(rnorm(10^5), rnorm(10^5))
 #' calc_dens_cor(x, Zmat, corMat = cor(Zmat))
 #'
-calc_dens_cor <- function(x, Zmat, corMat) {
+calc_dens_cor <- function(x, Zmat, corMat, log=FALSE) {
   # right now, only for 2 or 3 dimensions
   # will do each row of Zmat separately
-  mvtnorm::dmvnorm(Zmat, mean=x, sigma = corMat)
+  mvtnorm::dmvnorm(Zmat, mean=x, sigma = corMat, log=log)
 }
