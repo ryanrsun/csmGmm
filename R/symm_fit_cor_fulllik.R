@@ -14,27 +14,31 @@
 #' \item{piInfo}{List with same dimensions as initPiList, holds the final probability parameters.}
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
-#' @importFrom stats runif
+#' @importFrom dplyr %>%
 #'
 #' @export
 #' @examples
 #' set.seed(0)
-#' maxMeans = matrix(data=c(8,8), nrow=2)
 #' testStats <- cbind(rnorm(10^5), rnorm(10^5))
-#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2),
-#' matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
-#' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
-#' symm_fit_cor_EM(testStats = testStats, corMat = cor(testStats), initMuList = initMuList, initPiList = initPiList)
+#' testStats[1:100, 1] <- rnorm(100, mean=3)
+#' testStats[101:200, 1] <- rnorm(100, mean=5)
+#' testStats[201:300, 2] <- rnorm(100, mean=4)s
+#' testStats[301:400, 2] <- rnorm(100, mean=6)
+#' testStats[401:500, 1:2] <- rnorm(200, mean=7)
+#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 5), nrow=2, ncol=2),
+#' matrix(data=c(3, 0, 5, 0), nrow=2, ncol=2), matrix(data=c(6, 6), nrow=2, ncol=1))
+#' initPiList <- list(c(0.9), c(0.02, 0.02),c(0.02, 0.02), c(0.02))
+#' results <- symm_fit_cor_EM_fulllik(testStats = testStats, initMuList = initMuList, initPiList = initPiList)
 #'
 symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
 
   # need to split the test statistics for block correlation
   datK1 <- matrix(data=testStats[, 1], ncol=2, byrow=TRUE)
   datK2 <- matrix(data=testStats[, 2], ncol=2, byrow=TRUE)
-  
+
   # rho
   rho <- corMat[1, 2]
-  
+
   # number of composite hypotheses
   J <- nrow(testStats)
   # number of dimensions
@@ -101,7 +105,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
       } # done looping through different m
     } # dont looping through bl
     colnames(allPi) <- c("Prob", "bl", "sl", "m", "l")
-    
+
     # For full likelihood block correlation approach, we need 9*9=81 possible mu vectors
     # It's really only 25 (since can be 0, -1, 1, -3, 3 for each dimension), but this makes code easier
     # R expands sets of 1:9, 1:9 by going 1:9 of the first column, all with 1 of the second column,
@@ -114,7 +118,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
     muIdxMat <- expand.grid(1:9, 1:9)[, c(2, 1)] %>%
       set_colnames(c("K1", "K2"))
     twoDPi <- apply(expand.grid(allPi[, 1], allPi[, 1]), 1, prod)
-    
+
     ##############################################################################################
     # this is the E step where we calculate Pr(Z|c_l,m) for all c_l,m.
     # each l,m is one column.
@@ -131,17 +135,17 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
     BllMatlog <- sweep(BnumeratorLog, MARGIN=1, STATS=log(BDenom), FUN="-")
     # we're just a little inaccurate here, not sure what to do with tiny probabilities...
     BllMat <- exp(BllMatlog)
-    
+
     # the marginals (one half of the Bll, the Aik type terms)
-    sumEachNine <- function(x) { 
+    sumEachNine <- function(x) {
       c(sum(x[1:9]), sum(x[10:18]), sum(x[19:27]), sum(x[28:36]), sum(x[37:45]),
         sum(x[46:54]), sum(x[55:63]), sum(x[64:72]), sum(x[73:81]))
     }
-    sumEveryNine <- function(x) { 
-      c(sum(x[c(1,10,19,28,37,46,55,64,73)]), sum(x[c(2,11,20,29,38,47,56,65,74)]), 
-        sum(x[c(3,12,21,30,39,48,57,66,75)]), sum(x[c(4,13,22,31,40,49,58,67,76)]), 
-        sum(x[c(5,14,23,32,41,50,59,68,77)]), sum(x[c(6,15,24,33,42,51,60,69,78)]), 
-        sum(x[c(7,16,25,34,43,52,61,70,79)]), sum(x[c(8,17,26,35,44,53,62,71,80)]), 
+    sumEveryNine <- function(x) {
+      c(sum(x[c(1,10,19,28,37,46,55,64,73)]), sum(x[c(2,11,20,29,38,47,56,65,74)]),
+        sum(x[c(3,12,21,30,39,48,57,66,75)]), sum(x[c(4,13,22,31,40,49,58,67,76)]),
+        sum(x[c(5,14,23,32,41,50,59,68,77)]), sum(x[c(6,15,24,33,42,51,60,69,78)]),
+        sum(x[c(7,16,25,34,43,52,61,70,79)]), sum(x[c(8,17,26,35,44,53,62,71,80)]),
         sum(x[c(9,18,27,36,45,54,63,72,81)]))
     }
     BllMat_alln <- apply(BllMat, 2, sum) / (J / 2)
@@ -151,7 +155,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
     # the even j
     AikMat2 <- t(apply(BllMat, 1, sumEveryNine))
     Aik2_alln <- apply(AikMat2, 2, sum) / J
-    
+
     ###############################################################################################
     # this is the M step for probabilities of hypothesis space
     for (b_it in 0:B) {
@@ -163,7 +167,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
 
     ###############################################################################################
     # M step for means
-    # equations for first dimension mean mu_2,1 
+    # equations for first dimension mean mu_2,1
     eq21term21 <- 0
     eq21term31 <- 0
     eq21term0 <- 0
@@ -172,14 +176,14 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
     AikIdx21 <- which(allPi[, 2] == 2 & allPi[, 4] == 1)
     # forward is it's in the first element
     # reverse it mu_2,1 is in the second element
-    colAikIdx21 <- which(muIdxMat$K1 %in% AikIdx21 | muIdxMat$K2 %in% AikIdx21 ) 
-   
-    # loop through 
+    colAikIdx21 <- which(muIdxMat$K1 %in% AikIdx21 | muIdxMat$K2 %in% AikIdx21 )
+
+    # loop through
     testDF <- data.frame(a1 = rep(0, length(colAikIdx21)), a2=0, a3=0, a4=0, a5=0, a6=0)
     for (idx_it in 1:length(colAikIdx21)) {
       # columns of BllMat
       tempBllCol <- colAikIdx21[idx_it]
-      
+
       # figure out which of the three cases I'm in
       tempHmatRow <- unlist(muIdxMat[tempBllCol, ])
       tempBl1 <- Hmat$bl[tempHmatRow[1]]
@@ -205,9 +209,9 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
         eq21term21 = eq21term21 - sum(BllMat[, tempBllCol]) / (1 - rho^2)
         eq21term31 = eq21term31 + sum(BllMat[, tempBllCol] * rho * tempLcross) / (1 - rho^2)
         if (tempBl1 == 1 & tempBl2 == 3) {
-          eq21term0 <- eq21term0 + sum(BllMat[, tempBllCol] * tempL1 * (datK1[, 1] - rho * datK1[, 2])) / (1 - rho^2)   
+          eq21term0 <- eq21term0 + sum(BllMat[, tempBllCol] * tempL1 * (datK1[, 1] - rho * datK1[, 2])) / (1 - rho^2)
         } else {
-          eq21term0 <- eq21term0 + sum(BllMat[, tempBllCol] * tempL2 * (datK1[, 2] - rho * datK1[, 1])) / (1 - rho^2)   
+          eq21term0 <- eq21term0 + sum(BllMat[, tempBllCol] * tempL2 * (datK1[, 2] - rho * datK1[, 1])) / (1 - rho^2)
         }
       }
       # two mu_2,1
@@ -216,29 +220,29 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
         tempL2 <- sign(Hmat$Var1[tempHmatRow[2]])
         tempLcross <- tempL1 * tempL2
         eq21term21 <- eq21term21 + sum(BllMat[, tempBllCol] * (-2 + 2 * tempLcross * rho)) / (1 - rho^2)
-        eq21term0 <- eq21term0 + sum(BllMat[, tempBllCol] * (tempL1 * (datK1[, 1] - rho * datK1[, 2]) + tempL2 * (datK1[, 2] - rho * datK1[, 1]))) / (1 - rho^2)  
+        eq21term0 <- eq21term0 + sum(BllMat[, tempBllCol] * (tempL1 * (datK1[, 1] - rho * datK1[, 2]) + tempL2 * (datK1[, 2] - rho * datK1[, 1]))) / (1 - rho^2)
       }
       #cat(c(eq21term21, eq21term0))
       testDF[idx_it, ] <- c(eq21term21, eq21term0, BllMat_alln[tempBllCol], muK1[, tempBllCol], twoDPi[tempBllCol])
     } # done looping through all idx for mu_2,1
-      
+
     #-------------------------------------------------------#
-    # equations for first dimension mean mu_3,1 
-      
+    # equations for first dimension mean mu_3,1
+
     # which l=1-9 holds the means I care about
     AikIdx31 <- which(allPi[, 2] == 3 & allPi[, 4] == 1)
     # forward is it's in the first element
     # reverse it mu_2,1 is in the second element
-    colAikIdx31 <- which(muIdxMat$K1 %in% AikIdx31 | muIdxMat$K2 %in% AikIdx31) 
-    
+    colAikIdx31 <- which(muIdxMat$K1 %in% AikIdx31 | muIdxMat$K2 %in% AikIdx31)
+
     eq31term21 <- 0
     eq31term31 <- 0
     eq31term0 <- 0
-    # loop through 
+    # loop through
     for (idx_it in 1:length(colAikIdx31)) {
       # columns of BllMat
       tempBllCol <- colAikIdx31[idx_it]
-      
+
       # figure out which of the three cases I'm in
       tempHmatRow <- unlist(muIdxMat[tempBllCol, ])
       tempBl1 <- Hmat$bl[tempHmatRow[1]]
@@ -263,9 +267,9 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
         eq31term31 = eq31term31 - sum(BllMat[, tempBllCol]) / (1 - rho^2)
         eq31term21 = eq31term21 + sum(BllMat[, tempBllCol] * rho * tempLcross) / (1 - rho^2)
         if (tempBl1 == 3 & tempBl2 == 1) {
-          eq31term0 <- eq31term0 + sum(BllMat[, tempBllCol] * tempL1 * (datK1[, 1] - rho * datK1[, 2])) / (1 - rho^2)   
+          eq31term0 <- eq31term0 + sum(BllMat[, tempBllCol] * tempL1 * (datK1[, 1] - rho * datK1[, 2])) / (1 - rho^2)
         } else {
-          eq31term0 <- eq31term0 + sum(BllMat[, tempBllCol] * tempL2 * (datK1[, 2] - rho * datK1[, 1])) / (1 - rho^2)   
+          eq31term0 <- eq31term0 + sum(BllMat[, tempBllCol] * tempL2 * (datK1[, 2] - rho * datK1[, 1])) / (1 - rho^2)
         }
       }
       # two mu_3,1
@@ -274,10 +278,10 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
         tempL2 <- sign(Hmat$Var1[tempHmatRow[2]])
         tempLcross <- tempL1 * tempL2
         eq31term31 <- eq31term31 + sum(BllMat[, tempBllCol] * (-2 + 2 * tempLcross * rho)) / (1 - rho^2)
-        eq31term0 <- eq31term0 + sum(BllMat[, tempBllCol] * (tempL1 * (datK1[, 1] - rho * datK1[, 2]) + tempL2 * (datK1[, 2] - rho * datK1[, 1]))) / (1 - rho^2)  
+        eq31term0 <- eq31term0 + sum(BllMat[, tempBllCol] * (tempL1 * (datK1[, 1] - rho * datK1[, 2]) + tempL2 * (datK1[, 2] - rho * datK1[, 1]))) / (1 - rho^2)
       }
     } # done looping through all idx for mu_3,1
-    
+
     # now solve the equations
     Amat <- matrix(data=c(eq21term21, eq21term31, eq31term21, eq31term31), nrow=2, byrow=T)
     cVec <- matrix(data=c(eq21term0, eq31term0), nrow=2)
@@ -285,22 +289,22 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
 
     ###############################################################################################
     # now do the second set of means
-    # equations for second dimension mean mu_1,2 
+    # equations for second dimension mean mu_1,2
     eq12term12 <- 0
     eq12term32 <- 0
     eq12term0 <- 0
-    
+
     # which l=1-9 holds the means I care about
     AikIdx12 <- which(allPi[, 2] == 1 & allPi[, 4] == 1)
     # forward is it's in the first element
     # reverse it is in the second element
-    colAikIdx12 <- which(muIdxMat$K1 %in% AikIdx12 | muIdxMat$K2 %in% AikIdx12) 
-    
-    # loop through 
+    colAikIdx12 <- which(muIdxMat$K1 %in% AikIdx12 | muIdxMat$K2 %in% AikIdx12)
+
+    # loop through
     for (idx_it in 1:length(colAikIdx12)) {
       # columns of BllMat
       tempBllCol <- colAikIdx12[idx_it]
-      
+
       # figure out which of the three cases I'm in
       tempHmatRow <- unlist(muIdxMat[tempBllCol, ])
       tempBl1 <- Hmat$bl[tempHmatRow[1]]
@@ -325,9 +329,9 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
         eq12term12 = eq12term12 - sum(BllMat[, tempBllCol]) / (1 - rho^2)
         eq12term32 = eq12term32 + sum(BllMat[, tempBllCol] * rho * tempLcross) / (1 - rho^2)
         if (tempBl1 == 1 & tempBl2 == 3) {
-          eq12term0 <- eq12term0 + sum(BllMat[, tempBllCol] * tempL1 * (datK2[, 1] - rho * datK2[, 2])) / (1 - rho^2)   
+          eq12term0 <- eq12term0 + sum(BllMat[, tempBllCol] * tempL1 * (datK2[, 1] - rho * datK2[, 2])) / (1 - rho^2)
         } else {
-          eq12term0 <- eq12term0 + sum(BllMat[, tempBllCol] * tempL2 * (datK2[, 2] - rho * datK2[, 1])) / (1 - rho^2)   
+          eq12term0 <- eq12term0 + sum(BllMat[, tempBllCol] * tempL2 * (datK2[, 2] - rho * datK2[, 1])) / (1 - rho^2)
         }
       }
       # two mu_1,2
@@ -336,27 +340,27 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
         tempL2 <- sign(Hmat$Var2[tempHmatRow[2]])
         tempLcross <- tempL1 * tempL2
         eq12term12 <- eq12term12 + sum(BllMat[, tempBllCol] * (-2 + 2 * tempLcross * rho)) / (1 - rho^2)
-        eq12term0 <- eq12term0 + sum(BllMat[, tempBllCol] * (tempL1 * (datK2[, 1] - rho * datK2[, 2]) + tempL2 * (datK2[, 2] - rho * datK2[, 1]))) / (1 - rho^2)  
+        eq12term0 <- eq12term0 + sum(BllMat[, tempBllCol] * (tempL1 * (datK2[, 1] - rho * datK2[, 2]) + tempL2 * (datK2[, 2] - rho * datK2[, 1]))) / (1 - rho^2)
       }
     } # done looping through all idx for mu_1,2
-    
+
     #-------------------------------------------------------#
     # equations for second dimension mean mu_3,2
     eq32term12 <- 0
     eq32term32 <- 0
     eq32term0 <- 0
-    
+
     # which l=1-9 holds the means I care about
     AikIdx32 <- which(allPi[, 2] == 3 & allPi[, 4] == 1)
     # forward is it's in the first element
     # reverse it mu_2,1 is in the second element
-    colAikIdx32 <- which(muIdxMat$K1 %in% AikIdx32 | muIdxMat$K2 %in% AikIdx32) 
-    
-    # loop through 
+    colAikIdx32 <- which(muIdxMat$K1 %in% AikIdx32 | muIdxMat$K2 %in% AikIdx32)
+
+    # loop through
     for (idx_it in 1:length(colAikIdx32)) {
       # columns of BllMat
       tempBllCol <- colAikIdx32[idx_it]
-      
+
       # figure out which of the three cases I'm in
       tempHmatRow <- unlist(muIdxMat[tempBllCol, ])
       tempBl1 <- Hmat$bl[tempHmatRow[1]]
@@ -381,9 +385,9 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
         eq32term32 = eq32term32 - sum(BllMat[, tempBllCol]) / (1 - rho^2)
         eq32term12 = eq32term12 + sum(BllMat[, tempBllCol] * rho * tempLcross) / (1 - rho^2)
         if (tempBl1 == 3 & tempBl2 == 1) {
-          eq32term0 <- eq32term0 + sum(BllMat[, tempBllCol] * tempL1 * (datK2[, 1] - rho * datK2[, 2])) / (1 - rho^2)   
+          eq32term0 <- eq32term0 + sum(BllMat[, tempBllCol] * tempL1 * (datK2[, 1] - rho * datK2[, 2])) / (1 - rho^2)
         } else {
-          eq32term0 <- eq32term0 + sum(BllMat[, tempBllCol] * tempL2 * (datK2[, 2] - rho * datK2[, 1])) / (1 - rho^2)   
+          eq32term0 <- eq32term0 + sum(BllMat[, tempBllCol] * tempL2 * (datK2[, 2] - rho * datK2[, 1])) / (1 - rho^2)
         }
       }
       # two mu_3,2
@@ -392,15 +396,15 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
         tempL2 <- sign(Hmat$Var2[tempHmatRow[2]])
         tempLcross <- tempL1 * tempL2
         eq32term32 <- eq32term32 + sum(BllMat[, tempBllCol] * (-2 + 2 * tempLcross * rho)) / (1 - rho^2)
-        eq32term0 <- eq32term0 + sum(BllMat[, tempBllCol] * (tempL1 * (datK2[, 1] - rho * datK2[, 2]) + tempL2 * (datK2[, 2] - rho * datK2[, 1]))) / (1 - rho^2)  
+        eq32term0 <- eq32term0 + sum(BllMat[, tempBllCol] * (tempL1 * (datK2[, 1] - rho * datK2[, 2]) + tempL2 * (datK2[, 2] - rho * datK2[, 1]))) / (1 - rho^2)
       }
     } # done looping through all idx for mu_3,2
-    
+
     # now solve the equations
     Amat2 <- matrix(data=c(eq12term12, eq12term32, eq32term12, eq32term32), nrow=2, byrow=T)
     cVec2 <- matrix(data=c(eq12term0, eq32term0), nrow=2)
     muCol2 <- solve(Amat2) %*% -cVec2
-    
+
     # update muInfo
     # muCol1 is for mu_2,1 and mu_3,1
     # muCol2 is for mu_1,2 and mu_3,2
@@ -410,7 +414,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
     muInfo[[3]][2,1] <- 0
     muInfo[[4]][1,1] <- muCol1[2]
     muInfo[[4]][2,1] <- muCol2[2]
-    
+
     # mean constraint
     maxMeans <- find_max_means(muInfo)
     whichSmaller <- which(muInfo[[4]][, 1] < maxMeans)

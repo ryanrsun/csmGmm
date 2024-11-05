@@ -1,6 +1,6 @@
 #' symm_fit_cor_rho.R
 #'
-#' Fit the correlated csmGmm for sets of correlated elements. Also fits the correlation parameter in EM algorithm. 
+#' Fit the correlated csmGmm for sets of correlated elements. Also fits the correlation parameter in EM algorithm.
 #'
 #' @param testStats J*K matrix of test statistics where J is the number of sets and K is number of elements in each set.
 #' @param corMat K*K matrix that describes the correlation structure of each set.
@@ -14,27 +14,21 @@
 #' \item{piInfo}{List with same dimensions as initPiList, holds the final probability parameters.}
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
-#' @importFrom stats runif
+#' @importFrom mvtnorm rmvnorm
+#' @importFrom dplyr %>%
 #'
 #' @export
 #' @examples
 #' set.seed(0)
-#' maxMeans = matrix(data=c(8,8), nrow=2)
-#' corMat <- matrix(data=c(1, 0.5, 0.5, 1), nrow=2)
-#' dat0 <- mvtnorm::rmvnorm(n=2 * 10^4, mean=c(0, 0), sigma=corMat)
-#' dat1 <- mvtnorm::rmvnorm(n=10^4, mean=c(3, 0), sigma=corMat)
-#' dat2 <- mvtnorm::rmvnorm(n=10^4, mean=c(0, -3), sigma=corMat)
-#' dat3 <- mvtnorm::rmvnorm(n=10^4, mean=c(0, 3), sigma=corMat)
-#' dat4 <- mvtnorm::rmvnorm(n=10^4, mean=c(0, -3), sigma=corMat)
-#' dat5 <- mvtnorm::rmvnorm(n=10^4, mean=c(4, 4), sigma=corMat)
-#' dat6 <- mvtnorm::rmvnorm(n=10^4, mean=c(-4, -4), sigma=corMat)
-#' dat7 <- mvtnorm::rmvnorm(n=10^4, mean=c(4, -4), sigma=corMat)
-#' dat8 <- mvtnorm::rmvnorm(n=10^4, mean=c(-4, 4), sigma=corMat)
-#' testStats <- rbind(dat0, dat1, dat2, dat3, dat4, dat5, dat6, dat7, dat8)
-#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(3, 3), nrow=2, ncol=1),
-#' matrix(data=c(3, 3), nrow=2) , matrix(data=c(4, 4), nrow=2))
-#' initPiList <- list(0.2, 0.2, 0.2, 0.4)
-#' symm_fit_cor_EM_rho(testStats = testStats, initRho <- 0.1, initMuList = initMuList, initPiList = initPiList)
+#' corMat <- matrix(data=c(1, 0.3, 0.3, 1), nrow=2)
+#' testStats <- rbind(mvtnorm::rmvnorm(n=200, mean=c(3, 0), sigma=corMat),
+#' mvtnorm::rmvnorm(n=200, mean=c(0, 4), sigma=corMat),
+#' mvtnorm::rmvnorm(n=100, mean=c(7, 7), sigma=corMat),
+#' mvtnorm::rmvnorm(n=10^5 - 500, mean=c(0, 0), sigma=corMat))
+#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3), nrow=2),
+#' matrix(data=c(4, 0), nrow=2), matrix(data=c(5, 5), nrow=2))
+#' initPiList <- list(c(0.9), c(0.04), c(0.04), c(0.02))
+#' results <- symm_fit_cor_EM_rho(testStats = testStats, initRho = 0.1, initMuList = initMuList, initPiList = initPiList)
 #'
 symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
 
@@ -72,7 +66,7 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
   diffParams <- 10
   iter <- 0
   while (diffParams > eps) {
-    
+
     # update correlation
     corMat <- matrix(data=c(1, rhoInfo, rhoInfo, 1), nrow=2)
 
@@ -188,13 +182,13 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
       tempSum3 <- tempSum3 + sum(AikMat[, col_it] * tempT^2)
     }
     rhoFunc <- function(rho, tempSum1, tempSum2, tempSum3) {
-      J * rho / (1 - rho^2) + tempSum1 / (1 - rho^2) - tempSum2 * rho / (1-rho^2)^2 - tempSum3 * rho / (1-rho^2)^2 + 
+      J * rho / (1 - rho^2) + tempSum1 / (1 - rho^2) - tempSum2 * rho / (1-rho^2)^2 - tempSum3 * rho / (1-rho^2)^2 +
         2 * tempSum1 * rho^2 / (1 - rho^2)^2
     }
     tempRho <- uniroot(rhoFunc, interval=c(0.001, 0.999), tempSum1 = tempSum1, tempSum2 = tempSum2, tempSum3 = tempSum3)$root
     rhoInfo <- tempRho
     cat(rhoInfo, '\n')
-    
+
     ###############################################################################################
     # find difference
     allParams <- c(unlist(piInfo), unlist(muInfo), tempRho)

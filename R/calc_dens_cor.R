@@ -5,6 +5,7 @@
 #' @param x 2*1 vector of means.
 #' @param Zmat J*2 matrix of test statistics.
 #' @param corMat 2*2 matrix describing correlation structure of test statistics.
+#'@importFrom mvtnorm dmvnorm
 #'
 #' @return A J*1 vector of densities for each row of Zmat.
 #'

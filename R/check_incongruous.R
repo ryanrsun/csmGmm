@@ -8,6 +8,7 @@
 #'
 #' @return A vector with all the indices of all sets that have a higher lfdr value those a set
 #' with smaller test statistic magnitudes.
+#' @importFrom dplyr mutate arrange desc select
 #'
 #' @export
 #' @examples
@@ -19,7 +20,7 @@ check_incongruous <- function(zMatrix, lfdrVec) {
 
   # remove lfdr = 1
   lessThanOne <- which(lfdrVec < 0.99)
-  if (length(lessThanOne) <= 1) {return(c())} 
+  if (length(lessThanOne) <= 1) {return(c())}
   zMatrix <- zMatrix[lessThanOne, ]
   lfdrVec <- lfdrVec[lessThanOne]
 
@@ -52,20 +53,20 @@ check_incongruous <- function(zMatrix, lfdrVec) {
 
     # order by lfdr
     tempDat <- tempStats %>% as.data.frame(.) %>%
-      mutate(lfdr = tempLfdr) %>%
-      mutate(idx = idxVec) 
+      dplyr::mutate(lfdr = tempLfdr) %>%
+      dplyr::mutate(idx = idxVec)
 
     # check for incongruous
     if (K == 2) {
       colnames(tempDat)[1:2] <- c("Z1", "Z2")
-      tempDat <- tempDat %>% 
-        arrange(tempLfdr, desc(Z1), desc(Z2))
-      incongruousVec <- sapply(1:nrow(tempDat),FUN = find_2d,  allTestStats = as.matrix(tempDat %>% select(Z1, Z2)))
+      tempDat <- tempDat %>%
+        dplyr::arrange(tempLfdr, dplyr::desc(Z1), dplyr::desc(Z2))
+      incongruousVec <- sapply(1:nrow(tempDat),FUN = find_2d,  allTestStats = as.matrix(tempDat %>% dplyr::select(Z1, Z2)))
     } else if (K == 3) {
-      colnames(tempDat)[1:3] <- c("Z1", "Z2", "Z3") 
-      tempDat <- tempDat %>% 
-        arrange(tempLfdr, desc(Z1), desc(Z2), desc(Z3))
-      incongruousVec <- sapply(1:nrow(tempDat), FUN = find_3d, allTestStats = as.matrix(tempDat %>% select(Z1, Z2, Z3)))
+      colnames(tempDat)[1:3] <- c("Z1", "Z2", "Z3")
+      tempDat <- tempDat %>%
+        arrange(tempLfdr, dplyr::desc(Z1), dplyr::desc(Z2), dplyr::desc(Z3))
+      incongruousVec <- sapply(1:nrow(tempDat), FUN = find_3d, allTestStats = as.matrix(tempDat %>% dplyr::select(Z1, Z2, Z3)))
     } else {
       error("only support for 2-3 dimensions right now")
     }

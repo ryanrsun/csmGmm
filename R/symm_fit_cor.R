@@ -14,17 +14,21 @@
 #' \item{piInfo}{List with same dimensions as initPiList, holds the final probability parameters.}
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
-#' @importFrom stats runif
+#' @importFrom mvtnorm rmvnorm
+#' @importFrom dplyr %>% mutate arrange filter select slice
 #'
 #' @export
 #' @examples
 #' set.seed(0)
-#' maxMeans = matrix(data=c(8,8), nrow=2)
-#' testStats <- cbind(rnorm(10^5), rnorm(10^5))
-#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2),
-#' matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
-#' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
-#' symm_fit_cor_EM(testStats = testStats, corMat = cor(testStats), initMuList = initMuList, initPiList = initPiList)
+#' corMat <- matrix(data=c(1, 0.3, 0.3, 1), nrow=2)
+#' testStats <- rbind(mvtnorm::rmvnorm(n=200, mean=c(3, 0), sigma=corMat),
+#' mvtnorm::rmvnorm(n=200, mean=c(0, 4), sigma=corMat),
+#' mvtnorm::rmvnorm(n=100, mean=c(7, 7), sigma=corMat),
+#' mvtnorm::rmvnorm(n=10^5 - 500, mean=c(0, 0), sigma=corMat))
+#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3), nrow=2),
+#' matrix(data=c(4, 0), nrow=2), matrix(data=c(5, 5), nrow=2))
+#' initPiList <- list(c(0.9), c(0.04), c(0.04), c(0.02))
+#' results <- symm_fit_cor_EM(testStats = testStats, corMat = cor(testStats), initMuList = initMuList, initPiList = initPiList)
 #'
 symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
 
@@ -45,10 +49,10 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
     slVec <- slVec + abs(Hmat[, k_it])
   }
   # sort Hmat
-  Hmat <- Hmat %>% mutate(bl = blVec) %>%
-    mutate(sl = slVec) %>%
-    arrange(blVec, Var1, Var2) %>%
-    mutate(l = 0:(nrow(.) - 1))
+  Hmat <- Hmat %>% dplyr::mutate(bl = blVec) %>%
+    dplyr::mutate(sl = slVec) %>%
+    dplyr::arrange(blVec, Var1, Var2) %>%
+    dplyr::mutate(l = 0:(nrow(.) - 1))
 
   # initialize
   # the muInfo and piInfo are lists that hold the information in a more compact manner.
@@ -89,7 +93,7 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
                                     tempH$sl, rep(m_it, nrow(tempH)), tempH$l))
 
         for (h_it in 1:nrow(tempH)) {
-          allMu <- cbind(allMu, unlist(tempH %>% select(-bl, -sl, -l) %>% slice(h_it)) * muInfo[[b_it + 1]][, m_it])
+          allMu <- cbind(allMu, unlist(tempH %>% dplyr::select(-bl, -sl, -l) %>% dplyr::slice(h_it)) * muInfo[[b_it + 1]][, m_it])
         }
       } # done looping through different m
     } # dont looping through bl
@@ -129,7 +133,7 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
         AikIdx <- which(allPi[, 2] == b_it & allPi[, 4] == m_it)
         for (idx_it in 1:length(AikIdx)) {
           tempAik <- AikIdx[idx_it]
-          tempHvec <- tempHmat %>% select(-bl, -sl, -l) %>% slice(idx_it) %>% unlist(.)
+          tempHvec <- tempHmat %>% dplyr::select(-bl, -sl, -l) %>% dplyr::slice(idx_it) %>% unlist(.)
           LsigInvL <- diag(tempHvec) %*% sigInv %*% diag(tempHvec)
 
           tempLeftSum <- tempLeftSum + colSums(AikMat[, tempAik] * sweep(x = testStats %*% sigInv, MARGIN = 2,
