@@ -4,7 +4,7 @@
 \alias{calc_dens_cor}
 \title{calc_dens_cor.R}
 \usage{
-calc_dens_cor(x, Zmat, corMat)
+calc_dens_cor(x, Zmat, corMat, log = FALSE)
 }
 \arguments{
 \item{x}{2*1 vector of means.}

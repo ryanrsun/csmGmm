@@ -16,15 +16,17 @@
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
 #' @importFrom stats runif
 #'
+#' @importFrom dplyr %>%
+#'
 #' @export
 #' @examples
 #' set.seed(0)
 #' testStats <- cbind(rnorm(10^5), rnorm(10^5))
 #' maxMeans = matrix(data=c(8,8), nrow=2)
-#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2),
-#' matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
+#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=stats::runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2),
+#' matrix(data=stats::rrunif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
 #' initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
-#' symm_fit_ind_EM(testStats = testStats, initMuList = initMutLIst, initPiList = initPiList)
+#' symm_fit_ind_EM(testStats = testStats, initMuList = initMutList, initPiList = initPiList)
 #'
 symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5), checkpoint=TRUE) {
 

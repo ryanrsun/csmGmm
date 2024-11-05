@@ -1,6 +1,6 @@
 #' symm_fit_ind_noAssumption.R
 #'
-#' Fit the conditionally symmetric multidimensional Gaussian mixture model for sets of independent elements, 
+#' Fit the conditionally symmetric multidimensional Gaussian mixture model for sets of independent elements,
 #' but we don't assume that the means in the composite alternative are greater in magnitude than those in the composite null.
 #'
 #' @param testStats J*K matrix of test statistics where J is the number of sets and K is number of elements in each set.
@@ -15,7 +15,7 @@
 #' \item{piInfo}{List with same dimensions as initPiList, holds the final mixture proportions}
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
-#' @importFrom stats runif
+#' @importFrom dplyr %>%
 #'
 #' @export
 #' @examples
