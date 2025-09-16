@@ -15,22 +15,24 @@
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
 #'
-#' @importFrom dplyr %>%
-#'
+#' @importFrom dplyr %>% mutate arrange filter select slice relocate
+#' @import utils
 #' @export
 #' @examples
 #' set.seed(0)
-#' testStats <- cbind(rnorm(10^5), rnorm(10^5))
-#' testStats[1:100, 1] <- rnorm(100, mean=3)
-#' testStats[101:200, 1] <- rnorm(100, mean=5)
-#' testStats[201:300, 2] <- rnorm(100, mean=4)s
-#' testStats[301:400, 2] <- rnorm(100, mean=6)
-#' testStats[401:500, 1:2] <- rnorm(200, mean=7)
+#' testStats <- cbind(rnorm(10^4), rnorm(10^4))
+#' testStats[1:200, 1] <- rnorm(100, mean=3)
+#' testStats[201:400, 1] <- rnorm(100, mean=5)
+#' testStats[401:600, 2] <- rnorm(100, mean=3)
+#' testStats[601:800, 2] <- rnorm(100, mean=5)
+#' testStats[801:1000, 1:2] <- rnorm(200, mean=7)
 #' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 5), nrow=2, ncol=2),
-#' matrix(data=c(3, 0, 5, 0), nrow=2, ncol=2), matrix(data=c(6, 6), nrow=2, ncol=1))
+#' matrix(data=c(3, 0, 5, 0), nrow=2, ncol=2), matrix(data=c(7, 7), nrow=2, ncol=1))
 #' initPiList <- list(c(0.9), c(0.02, 0.02),c(0.02, 0.02), c(0.02))
 #' results <- symm_fit_ind_EM(testStats = testStats, initMuList = initMuList, initPiList = initPiList)
 #'
+
+
 symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5), checkpoint=TRUE) {
 
   # number of composite null hypotheses
@@ -52,12 +54,12 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
   # symmetric alternative
   symAltVec <- ifelse(apply(Hmat[, 1:K], 1, sum) == K | apply(Hmat[, 1:K], 1, sum) == -K, 1, 0)
   # sort Hmat
-  Hmat <- Hmat %>% mutate(bl = blVec) %>%
-    mutate(sl = slVec) %>%
-    mutate(symAlt = symAltVec) %>%
-    arrange(blVec, Var1, Var2) %>%
-    mutate(l = 0:(nrow(.) - 1)) %>%
-    relocate(l, .before = symAlt)
+  Hmat <- Hmat %>% dplyr::mutate(bl = blVec) %>%
+    dplyr::mutate(sl = slVec) %>%
+    dplyr::mutate(symAlt = symAltVec) %>%
+    dplyr::arrange(.data$bl, .data$Var1, .data$Var2) %>%
+    dplyr::mutate(l = 0:(nrow(.) - 1)) %>%
+    dplyr::relocate(.data$l, .before = .data$symAlt)
 
   # initialize
   # the muInfo and piInfo are lists that hold the information in a more compact manner.
@@ -90,7 +92,7 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
     for (b_it in 1:B) {
 
       # Hmat rows with this bl
-      tempH <- Hmat %>% filter(bl == b_it)
+      tempH <- Hmat %>% dplyr::filter(.data$bl == b_it)
 
       # loop through possible m for this value of bl
       for (m_it in 1:MbVec[b_it + 1]) {
@@ -98,7 +100,8 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
                                     tempH$sl, rep(m_it, nrow(tempH)), tempH$l, tempH$symAlt))
 
         for (h_it in 1:nrow(tempH)) {
-          allMu <- cbind(allMu, unlist(tempH %>% select(-bl, -sl, -l, -symAlt) %>% slice(h_it)) * muInfo[[b_it + 1]][, m_it])
+          allMu <- cbind(allMu, unlist(tempH %>% dplyr::select(-.data$bl, -.data$sl, -.data$l, -.data$symAlt) %>%
+                                         dplyr::slice(h_it)) * muInfo[[b_it + 1]][, m_it])
         }
       } # done looping through different m
     } # dont looping through bl
@@ -136,7 +139,7 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
     # do the alternative last, enforce that it must be larger in magnitude than the nulls
     for (b_it in 1:B) {
 
-      tempHmat <- Hmat %>% filter(bl == b_it)
+      tempHmat <- Hmat %>% dplyr::filter(.data$bl == b_it)
       # loop through m
       for (m_it in 1:MbVec[b_it + 1]) {
         tempMuSum <- rep(0, nrow(allMu))
@@ -146,7 +149,8 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
         AikIdx <- which(allPi[, 2] == b_it & allPi[, 4] == m_it)
         for (idx_it in 1:length(AikIdx)) {
           tempAik <- AikIdx[idx_it]
-          tempHvec <- tempHmat %>% select(-bl, -sl, -l, -symAlt) %>% slice(idx_it) %>% unlist(.)
+          tempHvec <- tempHmat %>% dplyr::select(-.data$bl, -.data$sl, -.data$l, -.data$symAlt) %>%
+            dplyr::slice(idx_it) %>% unlist(.)
 
           tempMuSum <- tempMuSum + colSums(AikMat[, tempAik] * sweep(x = testStats, MARGIN = 2,
                                                                      STATS = tempHvec, FUN="*"))

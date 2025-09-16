@@ -9,11 +9,12 @@
 #' @return A vector with all the indices of all sets that have a higher lfdr value those a set
 #' with smaller test statistic magnitudes.
 #' @importFrom dplyr mutate arrange desc select
+#' @importFrom rlang .data
 #'
 #' @export
 #' @examples
-#' zMatrix <- cbind(rnorm(10^5), rnorm(10^5))
-#' lfdrVec <- runif(10^5)
+#' zMatrix <- cbind(rnorm(10^4), rnorm(10^4))
+#' lfdrVec <- runif(10^4)
 #' check_incongruous(zMatrix = zMatrix, lfdrVec = lfdrVec)
 #'
 check_incongruous <- function(zMatrix, lfdrVec) {
@@ -52,7 +53,7 @@ check_incongruous <- function(zMatrix, lfdrVec) {
     tempStats <- abs(tempStats)
 
     # order by lfdr
-    tempDat <- tempStats %>% as.data.frame(.) %>%
+    tempDat <- tempStats %>% as.data.frame(.data) %>%
       dplyr::mutate(lfdr = tempLfdr) %>%
       dplyr::mutate(idx = idxVec)
 
@@ -60,15 +61,15 @@ check_incongruous <- function(zMatrix, lfdrVec) {
     if (K == 2) {
       colnames(tempDat)[1:2] <- c("Z1", "Z2")
       tempDat <- tempDat %>%
-        dplyr::arrange(tempLfdr, dplyr::desc(Z1), dplyr::desc(Z2))
-      incongruousVec <- sapply(1:nrow(tempDat),FUN = find_2d,  allTestStats = as.matrix(tempDat %>% dplyr::select(Z1, Z2)))
+        dplyr::arrange(tempLfdr, dplyr::desc(.data$Z1), dplyr::desc(.data$Z2))
+      incongruousVec <- sapply(1:nrow(tempDat),FUN = find_2d,  allTestStats = as.matrix(tempDat %>% dplyr::select(.data$Z1, .data$Z2)))
     } else if (K == 3) {
       colnames(tempDat)[1:3] <- c("Z1", "Z2", "Z3")
       tempDat <- tempDat %>%
-        arrange(tempLfdr, dplyr::desc(Z1), dplyr::desc(Z2), dplyr::desc(Z3))
-      incongruousVec <- sapply(1:nrow(tempDat), FUN = find_3d, allTestStats = as.matrix(tempDat %>% dplyr::select(Z1, Z2, Z3)))
+        dplyr::arrange(tempLfdr, dplyr::desc(.data$Z1), dplyr::desc(.data$Z2), dplyr::desc(.data$Z3))
+      incongruousVec <- sapply(1:nrow(tempDat), FUN = find_3d, allTestStats = as.matrix(tempDat %>% dplyr::select(.data$Z1, .data$Z2, .data$Z3)))
     } else {
-      error("only support for 2-3 dimensions right now")
+      stop("only support for 2-3 dimensions right now")
     }
 
     # get the bad indices
@@ -89,8 +90,8 @@ check_incongruous <- function(zMatrix, lfdrVec) {
 #'
 #' @export
 #' @examples
-#' zMatrix <- cbind(rnorm(10^5), rnorm(10^5))
-#' find_2d(x = 5, allTestStats = allTestStats)
+#' zMatrix <- cbind(rnorm(10^4), rnorm(10^4))
+#' find_2d(x = 5, allTestStats = zMatrix)
 #'
 find_2d <- function(x, allTestStats) {
   length(which(allTestStats[1:x, 1] < allTestStats[x, 1] & allTestStats[1:x, 2] < allTestStats[x, 2]))
@@ -106,10 +107,10 @@ find_2d <- function(x, allTestStats) {
 #'
 #' @export
 #' @examples
-#' zMatrix <- cbind(rnorm(10^5), rnorm(10^5))
-#' find_3d(x = 5, allTestStats = allTestStats)
+#' zMatrix <- cbind(rnorm(10^4), rnorm(10^4),  rnorm(10^4))
+#' find_3d(x = 5, allTestStats = zMatrix)
 #'
-find_3d <- function(x, numRows, allTestStats) {
+find_3d <- function(x, allTestStats) {
   length(which(allTestStats[1:x, 1] < allTestStats[x, 1] & allTestStats[1:x, 2] < allTestStats[x, 2] &
                  allTestStats[1:x, 3] < allTestStats[x, 3]))
 }

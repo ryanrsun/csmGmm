@@ -5,7 +5,7 @@
 \title{Tells if row x if allTestStats is an incongruous result (has a higher lfdr than a set of
 test statistics with lower magnitudes). For K=3 case.}
 \usage{
-find_3d(x, numRows, allTestStats)
+find_3d(x, allTestStats)
 }
 \arguments{
 \item{x}{Scalar, which row of allTestStats to check.}
@@ -20,7 +20,7 @@ Tells if row x if allTestStats is an incongruous result (has a higher lfdr than 
 test statistics with lower magnitudes). For K=3 case.
 }
 \examples{
-zMatrix <- cbind(rnorm(10^5), rnorm(10^5))
-find_3d(x = 5, allTestStats = allTestStats)
+zMatrix <- cbind(rnorm(10^4), rnorm(10^4),  rnorm(10^4))
+find_3d(x = 5, allTestStats = zMatrix)
 
 }

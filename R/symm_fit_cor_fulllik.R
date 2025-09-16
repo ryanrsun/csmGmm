@@ -14,22 +14,26 @@
 #' \item{piInfo}{List with same dimensions as initPiList, holds the final probability parameters.}
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
-#' @importFrom dplyr %>%
+#'
+#' @importFrom dplyr %>% filter select slice
+#' @importFrom magrittr %>% set_colnames
+#' @import utils
 #'
 #' @export
 #' @examples
 #' set.seed(0)
-#' testStats <- cbind(rnorm(10^5), rnorm(10^5))
+#' testStats <- cbind(rnorm(10^4), rnorm(10^4))
 #' testStats[1:100, 1] <- rnorm(100, mean=3)
 #' testStats[101:200, 1] <- rnorm(100, mean=5)
-#' testStats[201:300, 2] <- rnorm(100, mean=4)s
-#' testStats[301:400, 2] <- rnorm(100, mean=6)
-#' testStats[401:500, 1:2] <- rnorm(200, mean=7)
-#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 5), nrow=2, ncol=2),
-#' matrix(data=c(3, 0, 5, 0), nrow=2, ncol=2), matrix(data=c(6, 6), nrow=2, ncol=1))
-#' initPiList <- list(c(0.9), c(0.02, 0.02),c(0.02, 0.02), c(0.02))
-#' results <- symm_fit_cor_EM_fulllik(testStats = testStats, initMuList = initMuList, initPiList = initPiList)
+#' testStats[201:300, 2] <- rnorm(100, mean=4)
+#' testStats[301:400, 1:2] <- rnorm(200, mean=7)
+#' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3), nrow=2, ncol=1),
+#' matrix(data=c(3, 0), nrow=2, ncol=1), matrix(data=c(6, 6), nrow=2, ncol=1))
+#' initPiList <- list(c(0.9), c(0.04),c(0.04), c(0.02))
+#' results <- symm_fit_cor_EM_fulllik(testStats = testStats, corMat=diag(c(1,1)),
+#' initMuList = initMuList, initPiList = initPiList)
 #'
+
 symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
 
   # need to split the test statistics for block correlation
@@ -58,7 +62,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
   # sort Hmat
   Hmat <- Hmat %>% mutate(bl = blVec) %>%
     mutate(sl = slVec) %>%
-    arrange(blVec, Var1, Var2) %>%
+    arrange(.data$bl, .data$Var1, .data$Var2) %>%
     mutate(l = 0:(nrow(.) - 1))
 
   # initialize
@@ -92,7 +96,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
     for (b_it in 1:B) {
 
       # Hmat rows with this bl
-      tempH <- Hmat %>% filter(bl == b_it)
+      tempH <- Hmat %>% dplyr::filter(.data$bl == b_it)
 
       # loop through possible m for this value of bl
       for (m_it in 1:MbVec[b_it + 1]) {
@@ -100,7 +104,8 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
                                     tempH$sl, rep(m_it, nrow(tempH)), tempH$l))
 
         for (h_it in 1:nrow(tempH)) {
-          allMu <- cbind(allMu, unlist(tempH %>% select(-bl, -sl, -l) %>% slice(h_it)) * muInfo[[b_it + 1]][, m_it])
+          allMu <- cbind(allMu, unlist(tempH %>% dplyr::select(-.data$bl, -.data$sl, -.data$l) %>%
+                                         dplyr::slice(h_it)) * muInfo[[b_it + 1]][, m_it])
         }
       } # done looping through different m
     } # dont looping through bl
@@ -116,7 +121,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
     muK1 = t(expand.grid(allMu[1,], allMu[1,])[, c(2, 1)])
     muK2 = t(expand.grid(allMu[2,], allMu[2,])[, c(2, 1)])
     muIdxMat <- expand.grid(1:9, 1:9)[, c(2, 1)] %>%
-      set_colnames(c("K1", "K2"))
+      magrittr::set_colnames(c("K1", "K2"))
     twoDPi <- apply(expand.grid(allPi[, 1], allPi[, 1]), 1, prod)
 
     ##############################################################################################

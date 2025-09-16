@@ -20,7 +20,7 @@ Tells if row x if allTestStats is an incongruous result (has a higher lfdr than 
 test statistics with lower magnitudes). For K=2 case.
 }
 \examples{
-zMatrix <- cbind(rnorm(10^5), rnorm(10^5))
-find_2d(x = 5, allTestStats = allTestStats)
+zMatrix <- cbind(rnorm(10^4), rnorm(10^4))
+find_2d(x = 5, allTestStats = zMatrix)
 
 }

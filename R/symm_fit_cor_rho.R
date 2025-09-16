@@ -3,7 +3,7 @@
 #' Fit the correlated csmGmm for sets of correlated elements. Also fits the correlation parameter in EM algorithm.
 #'
 #' @param testStats J*K matrix of test statistics where J is the number of sets and K is number of elements in each set.
-#' @param corMat K*K matrix that describes the correlation structure of each set.
+#' @param initRho Initial value of rho, any reasonable guess should be ok.
 #' @param initMuList List of 2^K elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.
 #' @param initPiList List of 2^K elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.
 #' @param eps Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.
@@ -15,7 +15,9 @@
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
 #' @importFrom mvtnorm rmvnorm
-#' @importFrom dplyr %>%
+#' @importFrom stats uniroot
+#' @importFrom dplyr %>% filter select slice
+#' @import utils
 #'
 #' @export
 #' @examples
@@ -24,12 +26,14 @@
 #' testStats <- rbind(mvtnorm::rmvnorm(n=200, mean=c(3, 0), sigma=corMat),
 #' mvtnorm::rmvnorm(n=200, mean=c(0, 4), sigma=corMat),
 #' mvtnorm::rmvnorm(n=100, mean=c(7, 7), sigma=corMat),
-#' mvtnorm::rmvnorm(n=10^5 - 500, mean=c(0, 0), sigma=corMat))
+#' mvtnorm::rmvnorm(n=10^4 - 500, mean=c(0, 0), sigma=corMat))
 #' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3), nrow=2),
 #' matrix(data=c(4, 0), nrow=2), matrix(data=c(5, 5), nrow=2))
 #' initPiList <- list(c(0.9), c(0.04), c(0.04), c(0.02))
-#' results <- symm_fit_cor_EM_rho(testStats = testStats, initRho = 0.1, initMuList = initMuList, initPiList = initPiList)
+#' results <- symm_fit_cor_EM_rho(testStats = testStats,
+#' initRho = 0.1, initMuList = initMuList, initPiList = initPiList)
 #'
+
 symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
 
   J <- nrow(testStats)
@@ -50,7 +54,7 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
   # sort Hmat
   Hmat <- Hmat %>% mutate(bl = blVec) %>%
     mutate(sl = slVec) %>%
-    arrange(blVec, Var1, Var2) %>%
+    arrange(.data$bl, .data$Var1, .data$Var2) %>%
     mutate(l = 0:(nrow(.) - 1))
 
   # initialize
@@ -88,7 +92,7 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
     for (b_it in 1:B) {
 
       # Hmat rows with this bl
-      tempH <- Hmat %>% filter(bl == b_it)
+      tempH <- Hmat %>% dplyr::filter(.data$bl == b_it)
 
       # loop through possible m for this value of bl
       for (m_it in 1:MbVec[b_it + 1]) {
@@ -96,7 +100,8 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
                                     tempH$sl, rep(m_it, nrow(tempH)), tempH$l))
 
         for (h_it in 1:nrow(tempH)) {
-          allMu <- cbind(allMu, unlist(tempH %>% select(-bl, -sl, -l) %>% slice(h_it)) * muInfo[[b_it + 1]][, m_it])
+          allMu <- cbind(allMu, unlist(tempH %>% dplyr::select(-.data$bl, -.data$sl, -.data$l) %>%
+                                         slice(h_it)) * muInfo[[b_it + 1]][, m_it])
         }
       } # done looping through different m
     } # dont looping through bl
@@ -127,7 +132,7 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
     sigInv <- solve(corMat)
     for (b_it in 1:B) {
 
-      tempHmat <- Hmat %>% filter(bl == b_it)
+      tempHmat <- Hmat %>% dplyr::filter(.data$bl == b_it)
       # loop through m
       for (m_it in 1:MbVec[b_it + 1]) {
         tempRightSum <- rep(0, nrow(allMu))
@@ -137,7 +142,8 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
         AikIdx <- which(allPi[, 2] == b_it & allPi[, 4] == m_it)
         for (idx_it in 1:length(AikIdx)) {
           tempAik <- AikIdx[idx_it]
-          tempHvec <- tempHmat %>% select(-bl, -sl, -l) %>% slice(idx_it) %>% unlist(.)
+          tempHvec <- tempHmat %>% dplyr::select(-.data$bl, -.data$sl, -.data$l) %>%
+            dplyr::slice(idx_it) %>% unlist(.)
           LsigInvL <- diag(tempHvec) %*% sigInv %*% diag(tempHvec)
 
           tempLeftSum <- tempLeftSum + colSums(AikMat[, tempAik] * sweep(x = testStats %*% sigInv, MARGIN = 2,
@@ -185,9 +191,8 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
       J * rho / (1 - rho^2) + tempSum1 / (1 - rho^2) - tempSum2 * rho / (1-rho^2)^2 - tempSum3 * rho / (1-rho^2)^2 +
         2 * tempSum1 * rho^2 / (1 - rho^2)^2
     }
-    tempRho <- uniroot(rhoFunc, interval=c(0.001, 0.999), tempSum1 = tempSum1, tempSum2 = tempSum2, tempSum3 = tempSum3)$root
+    tempRho <- stats::uniroot(rhoFunc, interval=c(0.001, 0.999), tempSum1 = tempSum1, tempSum2 = tempSum2, tempSum3 = tempSum3)$root
     rhoInfo <- tempRho
-    cat(rhoInfo, '\n')
 
     ###############################################################################################
     # find difference

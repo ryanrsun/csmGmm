@@ -12,6 +12,8 @@ calc_dens_cor(x, Zmat, corMat, log = FALSE)
 \item{Zmat}{J*2 matrix of test statistics.}
 
 \item{corMat}{2*2 matrix describing correlation structure of test statistics.}
+
+\item{log}{return logarithm of density}
 }
 \value{
 A J*1 vector of densities for each row of Zmat.

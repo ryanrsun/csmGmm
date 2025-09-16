@@ -20,8 +20,8 @@ Check the number of sets of test statistics that have a higher (less significant
 than other sets with test statistics of uniformly smaller magnitudes.
 }
 \examples{
-zMatrix <- cbind(rnorm(10^5), rnorm(10^5))
-lfdrVec <- runif(10^5)
+zMatrix <- cbind(rnorm(10^4), rnorm(10^4))
+lfdrVec <- runif(10^4)
 check_incongruous(zMatrix = zMatrix, lfdrVec = lfdrVec)
 
 }

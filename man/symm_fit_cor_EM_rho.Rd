@@ -16,6 +16,8 @@ symm_fit_cor_EM_rho(
 \arguments{
 \item{testStats}{J*K matrix of test statistics where J is the number of sets and K is number of elements in each set.}
 
+\item{initRho}{Initial value of rho, any reasonable guess should be ok.}
+
 \item{initMuList}{List of 2^K elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.}
 
 \item{initPiList}{List of 2^K elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.}
@@ -23,8 +25,6 @@ symm_fit_cor_EM_rho(
 \item{eps}{Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.}
 
 \item{checkpoint}{Boolean, set to TRUE to print iterations of EM.}
-
-\item{corMat}{K*K matrix that describes the correlation structure of each set.}
 }
 \value{
 A list with the elements:
@@ -42,10 +42,11 @@ corMat <- matrix(data=c(1, 0.3, 0.3, 1), nrow=2)
 testStats <- rbind(mvtnorm::rmvnorm(n=200, mean=c(3, 0), sigma=corMat),
 mvtnorm::rmvnorm(n=200, mean=c(0, 4), sigma=corMat),
 mvtnorm::rmvnorm(n=100, mean=c(7, 7), sigma=corMat),
-mvtnorm::rmvnorm(n=10^5 - 500, mean=c(0, 0), sigma=corMat))
+mvtnorm::rmvnorm(n=10^4 - 500, mean=c(0, 0), sigma=corMat))
 initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3), nrow=2),
 matrix(data=c(4, 0), nrow=2), matrix(data=c(5, 5), nrow=2))
 initPiList <- list(c(0.9), c(0.04), c(0.04), c(0.02))
-results <- symm_fit_cor_EM_rho(testStats = testStats, initRho = 0.1, initMuList = initMuList, initPiList = initPiList)
+results <- symm_fit_cor_EM_rho(testStats = testStats,
+initRho = 0.1, initMuList = initMuList, initPiList = initPiList)
 
 }
