@@ -449,24 +449,24 @@ two-dimensional settings.</p>
 <div id="worked-example-of-csmgmm-for-three-dimensional-pleiotropy-study" class="section level2">
 <h2>Worked Example of csmGmm for Three-Dimensional Pleiotropy Study</h2>
 <p>Suppose we are performing a pleiotropy study with lung cancer,
-coronary artery disease, and body mass index (BMI). We have 100,000 SNPs
+coronary artery disease, and body mass index (BMI). We have 10,000 SNPs
 (in a real data analysis there are usually millions, but for the purpose
 of this example we’ll keep it small) that we want to associate with all
-three diseases. We generate 100,000 sets of three test statistics (a
-100,000*3 matrix). Of these 100,000 sets, let 3% have an association in
+three diseases. We generate 10,000 sets of three test statistics (a
+10,000*3 matrix). Of these 10,000 sets, let 3% have an association in
 one column only, 1% have an association in two columns, and 0.1% have an
 association in all three columns. The other 95.9% have no association in
 any column.</p>
-<p>When using a nominal false discovery rate of <span class="math inline">\(q=0.1\)</span>, we can see that the model makes 80
-correct rejections and 8 incorrect rejections, for a false discovery
-proportion of 8/88=0.091 in this example. There were 100 total signals,
-and the csmGmm found 80 of them. For full simulation results, please see
-our manuscript.</p>
+<p>When using a nominal false discovery rate of <span class="math inline">\(q=0.1\)</span>, we can see that the model makes 8
+correct rejections and 0 incorrect rejections, for a false discovery
+proportion of 0 in this example. There were 10 total signals, and the
+csmGmm found 8 of them. For full simulation results, please see our
+manuscript.</p>
 <p>Also, we suggest that the initPiList and initMuList given below be
 used as reasonable initial parameters for the EM algorithm for most
 <span class="math inline">\(K=3\)</span> three-dimensional settings.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># define number of SNPs and proportion in each case</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>J <span class="ot">&lt;-</span> <span class="dv">100000</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>J <span class="ot">&lt;-</span> <span class="dv">10000</span></span>
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>K <span class="ot">&lt;-</span> <span class="dv">3</span></span>
 <span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># proportion of SNPs with no association</span></span>
 <span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>case0 <span class="ot">&lt;-</span> <span class="fl">0.959</span> <span class="sc">*</span> J</span>
@@ -507,7 +507,7 @@ used as reasonable initial parameters for the EM algorithm for most
 <span id="cb5-40"><a href="#cb5-40" tabindex="-1"></a></span>
 <span id="cb5-41"><a href="#cb5-41" tabindex="-1"></a><span class="co"># fit the model</span></span>
 <span id="cb5-42"><a href="#cb5-42" tabindex="-1"></a>csmGmmOutput3D <span class="ot">&lt;-</span> <span class="fu">symm_fit_ind_EM</span>(<span class="at">testStats =</span> pleioDat3D, <span class="at">initMuList =</span> initMuList3D, </span>
-<span id="cb5-43"><a href="#cb5-43" tabindex="-1"></a>                                  <span class="at">initPiList =</span> initPiList3D, <span class="at">checkpoint=</span><span class="cn">FALSE</span>)</span>
+<span id="cb5-43"><a href="#cb5-43" tabindex="-1"></a>                                  <span class="at">initPiList =</span> initPiList3D, <span class="at">eps =</span> <span class="dv">10</span><span class="sc">^</span>(<span class="sc">-</span><span class="dv">4</span>), <span class="at">checkpoint=</span><span class="cn">FALSE</span>)</span>
 <span id="cb5-44"><a href="#cb5-44" tabindex="-1"></a></span>
 <span id="cb5-45"><a href="#cb5-45" tabindex="-1"></a><span class="co"># summarize output and find which rows are rejected at q=0.1</span></span>
 <span id="cb5-46"><a href="#cb5-46" tabindex="-1"></a>outputDF3D <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">Z1 =</span> pleioDat3D[, <span class="dv">1</span>], <span class="at">Z2 =</span> pleioDat3D[, <span class="dv">2</span>], <span class="at">Z3 =</span> pleioDat3D[, <span class="dv">3</span>], <span class="at">origIdx =</span> <span class="dv">1</span><span class="sc">:</span>J,</span>
@@ -519,10 +519,10 @@ used as reasonable initial parameters for the EM algorithm for most
 <span id="cb5-52"><a href="#cb5-52" tabindex="-1"></a></span>
 <span id="cb5-53"><a href="#cb5-53" tabindex="-1"></a><span class="co"># number of false rejections</span></span>
 <span id="cb5-54"><a href="#cb5-54" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">which</span>(outputDF3D<span class="sc">$</span>Causal <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> outputDF3D<span class="sc">$</span>Rej <span class="sc">==</span> <span class="dv">1</span>))</span></code></pre></div>
-<pre><code>## [1] 8</code></pre>
+<pre><code>## [1] 0</code></pre>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># number of true rejections</span></span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">which</span>(outputDF3D<span class="sc">$</span>Causal <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> outputDF3D<span class="sc">$</span>Rej <span class="sc">==</span> <span class="dv">1</span>))</span></code></pre></div>
-<pre><code>## [1] 80</code></pre>
+<pre><code>## [1] 8</code></pre>
 </div>
 <div id="initialization-in-higher-dimensions" class="section level2">
 <h2>Initialization in Higher Dimensions</h2>
