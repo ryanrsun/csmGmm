@@ -14,25 +14,27 @@ The csmGmm package implements the conditionally symmetric multidimensional Gauss
 
 For example, in a genetic mediation study, the goal is often to determine whether a single nucleotide polymorphism's (SNP) effect on disease risk is mediated through expression of a risk gene. In other words, the SNP affects gene expression, which perturbs disease risk. To do this analysis, we test the effect of the SNP on gene expression in a standard regression model, and then we can test the effect of the gene expression on disease risk in another regression model. Then we have two test statistics, and under some assumptions, there is a mediated effect if we can reject the null for each individual test statistic.
 
-In a pleiotropy study, we want to know if the same SNP affects risk of two different diseases. We can fit two regression models, one for the effect of the SNP on the first disease, and one for the effect of the SNP on the second disease. The SNP is said to be pleiotropic if we can reject both individual nulls. There may also be more than two diseases of interest. The csmGmm allows for this. Test statistics for the two diseases may come from the same dataset, and thus they would be correlated. The c-csmGmm can handle this situation.
+In a pleiotropy study, we want to know if the same SNP affects risk of two (or more) different diseases. For a two-disease study, we can fit two regression models, one for the effect of the SNP on the first disease, and one for the effect of the SNP on the second disease. The SNP is said to be pleiotropic if we can reject both individual nulls. Test statistics for the two diseases may come from the same dataset, and thus they would be correlated. The c-csmGmm can handle this situation.
 
-In a replication study, we want to know if the same SNP is associated with a disease in two independent datasets. We fit two regression models, and the SNP is said to be replicated if we can reject both individual nulls and the direction of effects is the same. The r-csmGmm is used for this situation.
+In a replication study, we want to know if the same SNP is associated with a disease in two (or more) independent datasets. In a two-dataset study, we fit two regression models, and the SNP is said to be replicated if we can reject both individual nulls and the direction of effects is the same. The r-csmGmm is used for this situation.
 
 The local false discovery rate is used to perform inference. Each set of test statistics receives an lfdr-value. We then sort the lfdr-values in increasing order. For a given false discovery rate $q$, we reject the first $r$ sets, where $r$ is the largest index such that the average of the first $r$ lfdr-values is less than or equal to $q$.
 
-## Worked Example of csmGmm
+## Worked Example of csmGmm for Two-Dimensional Mediation
 
 Suppose we are performing a mediation study with one SNP and 40,000 gene expressions of interest. We generate 40,000 sets of two test statistics (a 40,000*2 matrix). Of these 40,000 sets, let 2% have an association in the first column only, 2% have an association in the second column only, and 0.2% have an association in both columns. The other 95.8% have no association in either column.
 
-When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 71 correct rejections and 8 incorrect rejections, for a false discovery proportion of 8/79=0.0101 in this example. There were 80 causal sets, and the csmGmm found 71 of them. For full simulation results, please see our manuscript.
+When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 68 correct rejections and 7 incorrect rejections, for a false discovery proportion of 7/75=0.093 in this example. There were 80 causal sets, and the csmGmm found 68 of them. For full simulation results, please see our manuscript.
 
-Note that we made the problem even more difficult here by generating all associations with a positive effect size (instead of half negative and half positive, which would be more symmetrical). Still, the csmGmm worked well.
+Note that we made the problem even more difficult here by generating all associations with a positive effect size (instead of half negative and half positive, which would be more symmetrical and closer to the assumed model). Still, the csmGmm worked well.
 
-```{r}
+Also, we suggest that the initPiList and initMuList given below be used as reasonable initial parameters for the EM algorithm for most GWAS type datasets in $K=2$ two-dimensional settings.
+
+```{r Mediation, cache=TRUE, warning=FALSE, message=FALSE}
 library(csmGmm)
 library(dplyr)
 
-# number of SNPs and proportion in each case
+# define number of SNPs and proportion in each case
 J <- 40000
 K <- 2
 case0 <- 0.958 * J
@@ -49,15 +51,15 @@ medDat <- rbind(cbind(rnorm(n=case0), rnorm(n=case0)),
                 cbind(rnorm(n=case2), rnorm(n=case2, mean=effSize)),
                 cbind(rnorm(n=case3, mean=effSize), rnorm(n=case3, mean=effSize)))
 
-# intial starting values
-maxMeans = matrix(data=c(8,8), nrow=2)
-initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
-initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
+# define intial starting values
+initPiList <- list(c(0.82), c(0.02, 0.02), c(0.02, 0.02), c(0.1))
+initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 6), nrow=2),
+                   matrix(data=c(3, 0, 6, 0), nrow=2), matrix(data=c(8, 8), nrow=2))
 # fit the model
 csmGmmOutput <- symm_fit_ind_EM(testStats = medDat, initMuList = initMuList, initPiList = initPiList,
                                 checkpoint=FALSE)
 
-# rejections at q=0.1
+# summarize output and find which rows are rejected at q=0.1
 outputDF <- data.frame(Z1 = medDat[, 1], Z2 = medDat[, 2], origIdx = 1:J,
                          lfdrValue=csmGmmOutput$lfdrResults) %>%
     arrange(lfdrValue) %>%
@@ -73,17 +75,125 @@ length(which(outputDF$Causal == 1 & outputDF$Rej == 1))
 ```
 
 
+## Worked Example of csmGmm for Three-Dimensional Pleiotropy Study
+
+Suppose we are performing a pleiotropy study with lung cancer, coronary artery disease, and body mass index (BMI). We have 100,000 SNPs (in a real data analysis there are usually millions, but for the purpose of this example we'll keep it small) that we want to associate with all three diseases. We generate 100,000 sets of three test statistics (a 100,000*3 matrix). Of these 100,000 sets, let 3% have an association in one column only, 1% have an association in two columns, and 0.1% have an association in all three columns. The other 95.9% have no association in any column.
+
+When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 80 correct rejections and 8 incorrect rejections, for a false discovery proportion of 8/88=0.091 in this example. There were 100 total signals, and the csmGmm found 80 of them. For full simulation results, please see our manuscript.
+
+Also, we suggest that the initPiList and initMuList given below be used as reasonable initial parameters for the EM algorithm for most $K=3$ three-dimensional settings.
+
+```{r, three pleiotropy, cache=TRUE}
+# define number of SNPs and proportion in each case
+J <- 100000
+K <- 3
+# proportion of SNPs with no association
+case0 <- 0.959 * J
+# proportion of SNPs with association in only one column (divided by three columns)
+oneCol <- (0.03 / 3) * J
+# proportion of SNPs with associations in two columns (divided by three possible pairs)
+twoCol <- (0.01 / 3) * J
+# proportions of SNPs with associations in all three columns 
+threeCol <- 0.001 * J
+
+# effect size of association
+effSize <- 4
+
+# generate data
+set.seed(0)
+pleioDat3D <- rbind(cbind(rnorm(n=case0 + 1), rnorm(n=case0 + 1), 
+                          rnorm(n=case0 + 1)), # +1 is for rounding purposes, to get to 100k sets
+                cbind(rnorm(n=oneCol, mean=effSize), rnorm(n=oneCol), rnorm(n=oneCol)),
+                cbind(rnorm(n=oneCol), rnorm(n=oneCol, mean=effSize), rnorm(n=oneCol)),
+                cbind(rnorm(n=oneCol), rnorm(n=oneCol), rnorm(n=oneCol, mean=effSize)),
+                cbind(rnorm(n=twoCol, mean=effSize), rnorm(n=twoCol, mean=effSize), rnorm(n=twoCol)),
+                cbind(rnorm(n=twoCol, mean=effSize), rnorm(n=twoCol), rnorm(n=twoCol, mean=effSize)),
+                cbind(rnorm(n=twoCol), rnorm(n=twoCol, mean=effSize), rnorm(n=twoCol, mean=effSize)),
+                cbind(rnorm(n=threeCol, mean=effSize), rnorm(n=threeCol, mean=effSize), rnorm(n=threeCol, mean=effSize)))
+# flip half of the effect sizes
+flipRows <- sample(x=1:J, size=J/2, replace=FALSE)
+pleioDat3D[flipRows, ] <- -1 * pleioDat3D[flipRows, ]
+
+# define initial starting values
+initPiList3D <- list(c(0.82))
+for (i in 2:7) {initPiList3D[[i]] <- c(0.08 / 12, 0.08 / 12)}
+initPiList3D[[8]] <- c(0.1)
+initMuList3D <- list(matrix(data=0, nrow=3, ncol=1)) # package will add the appropriate 0s to initMuList
+for (i in 2:7) {
+  initMuList3D[[i]] <- cbind(rep(2, 3), rep(5, 3))
+}
+initMuList3D[[8]] <- matrix(data=c(8, 8, 8), nrow=3)
+
+# fit the model
+csmGmmOutput3D <- symm_fit_ind_EM(testStats = pleioDat3D, initMuList = initMuList3D, 
+                                  initPiList = initPiList3D, checkpoint=FALSE)
+
+# summarize output and find which rows are rejected at q=0.1
+outputDF3D <- data.frame(Z1 = pleioDat3D[, 1], Z2 = pleioDat3D[, 2], Z3 = pleioDat3D[, 3], origIdx = 1:J,
+                         lfdrValue=csmGmmOutput3D$lfdrResults) %>%
+    arrange(lfdrValue) %>%
+    mutate(lfdrAvg = cummean(lfdrValue)) %>%
+    mutate(Causal = ifelse(origIdx >= J - threeCol + 1, 1, 0)) %>%
+    mutate(Rej = ifelse(lfdrAvg < 0.1, 1, 0))
+
+# number of false rejections
+length(which(outputDF3D$Causal == 0 & outputDF3D$Rej == 1))
+# number of true rejections
+length(which(outputDF3D$Causal == 1 & outputDF3D$Rej == 1))
+
+```
+
+## Initialization in Higher Dimensions
+
+Suppose we want to perform a study with four or more dimensions (e.g. a pleiotropy study with four outcomes). We suggest the initialization parameters initPiListHD and initMuListHD given below. 
+
+Note that in this example there are no causal SNPs, and the model reassuringly makes no rejections.
+
+```{r, four pleiotropy, cache=TRUE}
+
+# define number of SNPs and proportion in each case
+J <- 1000
+K <- 4
+
+# generate data - no signals, all rows are null
+set.seed(0)
+fourDimZ <- cbind(rnorm(J), rnorm(J), rnorm(J), rnorm(J))
+
+# define initial values for higher dimensions
+initPiListHD <- list(c(0.82))
+for (i in 2:(2^K)) {initPiListHD[[i]] <- 0.18 / (2^K - 1)}
+initMuListHD <- list(matrix(data=rep(0, K), nrow=K, ncol=1))
+for (i in 2:(2^K)) {
+  initMuListHD[[i]] <- matrix(data=rep(3, K), nrow=K, ncol=1)
+}
+
+# fit the model (note: we usually change the convergence criterion for higher dimensions to increase speed)
+csmGmmOutputHD <- symm_fit_ind_EM(testStats = fourDimZ, initMuList = initMuListHD, initPiList = initPiListHD, eps=10^(-1), checkpoint=F)
+
+# summarize output and find which rows are rejected at q=0.1
+outputDFHD <- data.frame(Z1 = fourDimZ[, 1], Z2 = fourDimZ[, 2], Z3 = fourDimZ[, 3], Z4 = fourDimZ[, 4],
+                         origIdx = 1:J,
+                         lfdrValue=csmGmmOutputHD$lfdrResults) %>%
+    arrange(lfdrValue) %>%
+    mutate(lfdrAvg = cummean(lfdrValue)) %>%
+    mutate(Rej = ifelse(lfdrAvg < 0.1, 1, 0))
+
+# no true causal SNPs, and no rejections
+head(outputDFHD)
+
+```
+
 ## Worked Example of c-csmGmm
 
 Sometimes the test statistics in a set may be correlated. Suppose we have 100,000 SNPs in a pleiotropy study of two correlated outcomes in the same dataset. We let the two test statistics be correlated at $\rho=0.3$,
 and we use the same proportions of associations as above.
 
-When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 69 correct rejections and 5 incorrect rejections, for a false discovery proportion of 5/74=0.068 in this example. There were 80 causal sets, and the csmGmm found 69 of them. For full simulation results, please see our manuscript.
+When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 69 correct rejections and 5 incorrect rejections, for a false discovery proportion of 5/74=0.068 in this example. There were 80 signals, and the csmGmm found 69 of them. For full simulation results, please see our manuscript.
 
 
-```{r}
+```{r, c-csmGmm, cache=T}
 
-# number of SNPs and proportion in each case
+# define number of SNPs and proportion in each case
 J <- 40000
 K <- 2
 case0 <- 0.958 * J
@@ -105,15 +215,15 @@ pleioDat <- rbind(mvtnorm::rmvnorm(n=case0, sigma=corMat),
 estCor <- cor(pleioDat)[1,2]
 estCorMat <- matrix(data=c(1, estCor, estCor, 1), nrow=2)
 
-# intial starting values
-maxMeans = matrix(data=c(8,8), nrow=2)
-initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=2, min=0, max=min(maxMeans)), nrow=2, ncol=1), matrix(data=runif(n=2, min=0, max=min(maxMeans)), nrow=2, ncol=1), maxMeans)
-initPiList <- list(c(0.82), c(0.04),c(0.04), c(0.1))
+# define intial starting values
+initPiList <- list(c(0.82), c(0.02, 0.02), c(0.02, 0.02), c(0.1))
+initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 6), nrow=2),
+                   matrix(data=c(3, 0, 6, 0), nrow=2), matrix(data=c(8, 8), nrow=2))
 # fit the model
 c_csmGmm <- symm_fit_cor_EM(testStats = pleioDat, initMuList = initMuList, initPiList = initPiList,
                             corMat = estCorMat, checkpoint=FALSE)
 
-# rejections at q=0.1
+# summarize output and find which rows are rejected at q=0.1
 c_outputDF <- data.frame(Z1 = pleioDat[, 1], Z2 = pleioDat[, 2], origIdx = 1:J,
                          lfdrValue=c_csmGmm$lfdrResults) %>%
     arrange(lfdrValue) %>%
@@ -133,11 +243,11 @@ length(which(c_outputDF$Causal == 1 & c_outputDF$Rej == 1))
 
 When testing for replication, we reject the null only if the associations exist and point in the same direction. Thus in this example, we will generate data with both positive and negative effect sizes.
 
-When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 35 correct rejections and 2 incorrect rejections, for a false discovery proportion of 2/35=0.057 in this example. There were 40 causal sets, and the r-csmGmm found 33 of them. For full simulation results, please see our manuscript.
+When using a nominal false discovery rate of $q=0.1$, we can see that the model makes 31 correct rejections and 1 incorrect rejections, for a false discovery proportion of 1/32=0.031 in this example. There were 40 causal sets, and the r-csmGmm found 31 of them. For full simulation results, please see our manuscript.
 
-```{r}
+```{r, r-csmGmm, cache=TRUE}
 
-# number of SNPs and proportion in each case
+# define number of SNPs and proportion in each case
 J <- 40000
 K <- 2
 case0 <- 0.958 * J
@@ -159,15 +269,15 @@ repDat <- rbind(cbind(rnorm(n=case0), rnorm(n=case0)),
                 cbind(rnorm(n=case3/4, mean=effSize), rnorm(n=case3/4, mean=effSize)),
                 cbind(rnorm(n=case3/4, mean=-effSize), rnorm(n=case3/4, mean=-effSize)))
 
-# intial starting values
-maxMeans = matrix(data=c(8,8), nrow=2)
-initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), matrix(data=runif(n=4, min=0, max=min(maxMeans)), nrow=2, ncol=2), maxMeans)
-initPiList <- list(c(0.82), c(0.02, 0.02),c(0.02, 0.02), c(0.1))
+# define intial starting values
+initPiList <- list(c(0.82), c(0.02, 0.02), c(0.02, 0.02), c(0.1))
+initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 6), nrow=2),
+                   matrix(data=c(3, 0, 6, 0), nrow=2), matrix(data=c(8, 8), nrow=2))
 # fit the model
 r_csmGmm <- symm_fit_ind_EM(testStats = repDat, initMuList = initMuList, initPiList = initPiList,
                                 sameDirAlt=TRUE, checkpoint=FALSE)
 
-# rejections at q=0.1
+# summarize output and find which rows are rejected at q=0.1
 r_outputDF <- data.frame(Z1 = repDat[, 1], Z2 = repDat[, 2], origIdx = 1:J,
                          lfdrValue=r_csmGmm$lfdrResults) %>%
     arrange(lfdrValue) %>%
