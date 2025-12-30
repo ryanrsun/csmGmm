@@ -68,8 +68,13 @@ check_incongruous <- function(zMatrix, lfdrVec) {
       tempDat <- tempDat %>%
         dplyr::arrange(tempLfdr, dplyr::desc(.data$Z1), dplyr::desc(.data$Z2), dplyr::desc(.data$Z3))
       incongruousVec <- sapply(1:nrow(tempDat), FUN = find_3d, allTestStats = as.matrix(tempDat %>% dplyr::select(.data$Z1, .data$Z2, .data$Z3)))
+    } else if (K == 4) {
+      colnames(tempDat)[1:4] <- c("Z1", "Z2", "Z3", "Z4")
+      tempDat <- tempDat %>%
+        dplyr::arrange(tempLfdr, dplyr::desc(.data$Z1), dplyr::desc(.data$Z2), dplyr::desc(.data$Z3), dplyr::desc(.data$Z4))
+      incongruousVec <- sapply(1:nrow(tempDat), FUN = find_4d, allTestStats = as.matrix(tempDat %>% dplyr::select(.data$Z1, .data$Z2, .data$Z3, .data$Z4)))
     } else {
-      stop("only support for 2-3 dimensions right now")
+      stop("only support for 2-4 dimensions right now")
     }
 
     # get the bad indices
@@ -115,3 +120,20 @@ find_3d <- function(x, allTestStats) {
                  allTestStats[1:x, 3] < allTestStats[x, 3]))
 }
 
+#' Tells if row x if allTestStats is an incongruous result (has a higher lfdr than a set of
+#' test statistics with lower magnitudes). For K=4 case.
+#'
+#' @param x Scalar, which row of allTestStats to check.
+#' @param allTestStats J*K vector of all test statistics.
+#'
+#' @return A scalar denoting the number of sets with lower lfdr and test statistics of lower magnitude. 0 means congruous result.
+#'
+#' @export
+#' @examples
+#' zMatrix <- cbind(rnorm(10^4), rnorm(10^4),  rnorm(10^4), rnorm(10^4))
+#' find_4d(x = 5, allTestStats = zMatrix)
+#'
+find_4d <- function(x, allTestStats) {
+  length(which(allTestStats[1:x, 1] < allTestStats[x, 1] & allTestStats[1:x, 2] < allTestStats[x, 2] &
+                 allTestStats[1:x, 3] < allTestStats[x, 3] & allTestStats[1:x, 4] < allTestStats[x, 4]))
+}
