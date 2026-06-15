@@ -17,7 +17,6 @@
 #' @importFrom mvtnorm rmvnorm
 #' @importFrom stats uniroot
 #' @importFrom dplyr %>% filter select slice
-#' @import utils
 #'
 #' @export
 #' @examples
@@ -34,7 +33,7 @@
 #' initRho = 0.1, initMuList = initMuList, initPiList = initPiList)
 #'
 
-symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
+symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps = 10^(-5), checkpoint=FALSE) {
 
   J <- nrow(testStats)
   # number of dimensions
@@ -203,7 +202,7 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
     oldParams <- allParams
     iter <- iter + 1
     if (checkpoint) {
-      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+      message(iter, " - ", diffParams, "\n", allParams, "\n")
     }
   }
 

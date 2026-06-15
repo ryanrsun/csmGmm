@@ -16,7 +16,6 @@
 #' \item{iter}{Number of iterations run in EM algorithm.}
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
 #' @importFrom dplyr %>% mutate arrange relocate filter select slice
-#' @import utils
 #'
 #' @export
 #' @examples
@@ -34,7 +33,7 @@
 #' initMuList = initMuList, initPiList = initPiList)
 #'
 
-symm_fit_ind_EM_noAssumption <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5), checkpoint=TRUE) {
+symm_fit_ind_EM_noAssumption <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5), checkpoint=FALSE) {
 
   # number of composite null hypotheses
   J <- nrow(testStats)
@@ -183,7 +182,7 @@ symm_fit_ind_EM_noAssumption <- function(testStats, initMuList, initPiList, same
     oldParams <- allParams
     iter <- iter + 1
     if (checkpoint) {
-      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+      message(iter, " - ", diffParams, "\n", allParams, "\n")
     }
   }
 

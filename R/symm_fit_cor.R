@@ -17,7 +17,6 @@
 #' @importFrom mvtnorm rmvnorm
 #' @importFrom dplyr %>% mutate arrange filter select slice
 #' @importFrom rlang .data
-#' @import utils
 #'
 #' @export
 #' @examples
@@ -35,7 +34,7 @@
 #'
 #'
 
-symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
+symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=FALSE) {
 
   sigInv = solve(corMat)
   J <- nrow(testStats)
@@ -179,7 +178,7 @@ symm_fit_cor_EM <- function(testStats, corMat, initMuList, initPiList, eps = 10^
     oldParams <- allParams
     iter <- iter + 1
     if (checkpoint) {
-      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+      message(iter, " - ", diffParams, "\n", allParams, "\n")
     }
   }
 

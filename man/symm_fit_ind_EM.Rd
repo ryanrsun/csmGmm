@@ -10,7 +10,7 @@ symm_fit_ind_EM(
   initPiList,
   sameDirAlt = FALSE,
   eps = 10^(-5),
-  checkpoint = TRUE
+  checkpoint = FALSE
 )
 }
 \arguments{

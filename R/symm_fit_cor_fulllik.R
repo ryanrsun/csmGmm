@@ -17,7 +17,6 @@
 #'
 #' @importFrom dplyr %>% filter select slice
 #' @importFrom magrittr %>% set_colnames
-#' @import utils
 #'
 #' @export
 #' @examples
@@ -34,7 +33,7 @@
 #' initMuList = initMuList, initPiList = initPiList)
 #'
 
-symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=TRUE) {
+symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, eps = 10^(-5), checkpoint=FALSE) {
 
   # need to split the test statistics for block correlation
   datK1 <- matrix(data=testStats[, 1], ncol=2, byrow=TRUE)
@@ -436,7 +435,7 @@ symm_fit_cor_EM_fulllik <- function(testStats, corMat, initMuList, initPiList, e
     oldParams <- allParams
     iter <- iter + 1
     if (checkpoint) {
-      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+      message(iter, " - ", diffParams, "\n", allParams, "\n")
     }
   } # done with EM
 

@@ -10,7 +10,7 @@ symm_fit_cor_EM(
   initMuList,
   initPiList,
   eps = 10^(-5),
-  checkpoint = TRUE
+  checkpoint = FALSE
 )
 }
 \arguments{

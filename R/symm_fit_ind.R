@@ -16,7 +16,6 @@
 #' \item{lfdrResults}{J*1 vector of all lfdr statistics.}
 #'
 #' @importFrom dplyr %>% mutate arrange filter select slice relocate
-#' @import utils
 #' @export
 #' @examples
 #' set.seed(0)
@@ -33,7 +32,7 @@
 #'
 
 
-symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5), checkpoint=TRUE) {
+symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE, eps = 10^(-5), checkpoint=FALSE) {
 
   # number of composite null hypotheses
   J <- nrow(testStats)
@@ -182,7 +181,7 @@ symm_fit_ind_EM <- function(testStats, initMuList, initPiList, sameDirAlt=FALSE,
     oldParams <- allParams
     iter <- iter + 1
     if (checkpoint) {
-      cat(iter, " - ", diffParams, "\n", allParams, "\n")
+      message(iter, " - ", diffParams, "\n", allParams, "\n")
     }
   }
 
