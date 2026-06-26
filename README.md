@@ -1,9 +1,10 @@
-# csmGmm
+# csmGmm Description and quick-start
 
 This R package implements the conditionally symmetric multidimensional Gaussian mixture model (csmGmm) for large-scale testing of composite null hypotheses in genetic association applications such as replication analysis, pleiotropy analysis, and mediation analysis. In such analyses, we typically have K sets of test statistics corresponding to the same J SNPs, where K is a small number (e.g. 2 or 3) and J is large (e.g. 1 million). For each SNP, we want to know if we can reject all K individual nulls. The methodology paper reference is: Sun R, McCaw ZR, Lin X. Testing a large number of composite null hypotheses using conditionally symmetric multidimensional gaussian mixtures in genome-wide studies. Journal of the American Statistical Association. 2025 Apr 3;120(550):605-17.
 
 For a quick-start replication analysis, try the following:
 
+```r
 # Load library
 library(csmGmm)
 
@@ -38,3 +39,4 @@ processed <- process_lfdr_results(orig_data=prepped$extra_dat,
 
 # produce visualizations
 figs <- create_plots(plotData = processed$all_snps_info)
+```
