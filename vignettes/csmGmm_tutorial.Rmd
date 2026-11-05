@@ -56,7 +56,7 @@ initPiList <- list(c(0.82), c(0.02, 0.02), c(0.02, 0.02), c(0.1))
 initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 6), nrow=2),
                    matrix(data=c(3, 0, 6, 0), nrow=2), matrix(data=c(8, 8), nrow=2))
 # fit the model
-csmGmmOutput <- symm_fit_ind_EM(testStats = medDat, initMuList = initMuList, initPiList = initPiList,
+csmGmmOutput <- symm_fit_ind_EM(testStats = medDat, initMuList = initMuList, initPiList = initPiList, sameDirAlt = FALSE,
                                 checkpoint=FALSE)
 
 # summarize output and find which rows are rejected at q=0.1
@@ -126,7 +126,7 @@ initMuList3D[[8]] <- matrix(data=c(8, 8, 8), nrow=3)
 
 # fit the model
 csmGmmOutput3D <- symm_fit_ind_EM(testStats = pleioDat3D, initMuList = initMuList3D, 
-                                  initPiList = initPiList3D, eps = 10^(-4), checkpoint=FALSE)
+                                  initPiList = initPiList3D, sameDirAlt = FALSE, eps = 10^(-4), checkpoint=FALSE)
 
 # summarize output and find which rows are rejected at q=0.1
 outputDF3D <- data.frame(Z1 = pleioDat3D[, 1], Z2 = pleioDat3D[, 2], Z3 = pleioDat3D[, 3], origIdx = 1:J,
@@ -168,7 +168,8 @@ for (i in 2:(2^K)) {
 }
 
 # fit the model (note: we usually change the convergence criterion for higher dimensions to increase speed)
-csmGmmOutputHD <- symm_fit_ind_EM(testStats = fourDimZ, initMuList = initMuListHD, initPiList = initPiListHD, eps=10^(-1), checkpoint=F)
+csmGmmOutputHD <- symm_fit_ind_EM(testStats = fourDimZ, initMuList = initMuListHD, initPiList = initPiListHD, 
+                                  sameDirAlt = FALSE, eps=10^(-1), checkpoint=F)
 
 # summarize output and find which rows are rejected at q=0.1
 outputDFHD <- data.frame(Z1 = fourDimZ[, 1], Z2 = fourDimZ[, 2], Z3 = fourDimZ[, 3], Z4 = fourDimZ[, 4],
@@ -221,7 +222,7 @@ initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 6), nr
                    matrix(data=c(3, 0, 6, 0), nrow=2), matrix(data=c(8, 8), nrow=2))
 # fit the model
 c_csmGmm <- symm_fit_cor_EM(testStats = pleioDat, initMuList = initMuList, initPiList = initPiList,
-                            corMat = estCorMat, checkpoint=FALSE)
+                            corMat = estCorMat, sameDirAlt = FALSE, checkpoint=FALSE)
 
 # summarize output and find which rows are rejected at q=0.1
 c_outputDF <- data.frame(Z1 = pleioDat[, 1], Z2 = pleioDat[, 2], origIdx = 1:J,

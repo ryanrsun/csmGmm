@@ -11,6 +11,8 @@ export(find_3d)
 export(find_4d)
 export(find_max_means)
 export(generate_init_lists)
+export(get_marginal_mixture)
+export(plot_fit_hist)
 export(prepare_csmgmm_data)
 export(process_lfdr_results)
 export(read_gwas_one)
@@ -25,24 +27,38 @@ import(dplyr)
 import(ggplot2)
 importFrom(curl,curl_download)
 importFrom(data.table,fread)
-importFrom(dplyr,"%>%")
-importFrom(dplyr,across)
-importFrom(dplyr,all_of)
-importFrom(dplyr,arrange)
-importFrom(dplyr,desc)
-importFrom(dplyr,filter)
-importFrom(dplyr,if_else)
-importFrom(dplyr,mutate)
-importFrom(dplyr,relocate)
-importFrom(dplyr,select)
-importFrom(dplyr,slice)
-importFrom(dplyr,starts_with)
-importFrom(magrittr,"%>%")
-importFrom(magrittr,set_colnames)
-importFrom(mvtnorm,dmvnorm)
-importFrom(mvtnorm,rmvnorm)
-importFrom(rlang,":=")
-importFrom(rlang,.data)
-importFrom(stats,dnorm)
-importFrom(stats,uniroot)
+importFrom(dplyr,
+  "%>%",
+  across,
+  all_of,
+  arrange,
+  desc,
+  filter,
+  group_by,
+  if_else,
+  mutate,
+  relocate,
+  select,
+  slice,
+  starts_with,
+  summarise
+)
+importFrom(graphics,hist)
+importFrom(magrittr,
+  "%>%",
+  set_colnames
+)
+importFrom(mvtnorm,
+  dmvnorm,
+  rmvnorm
+)
+importFrom(rlang,
+  ":=",
+  .data
+)
+importFrom(stats,
+  dnorm,
+  pnorm,
+  uniroot
+)
 importFrom(utils,globalVariables)

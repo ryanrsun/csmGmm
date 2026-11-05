@@ -8,7 +8,7 @@ symm_fit_ind_EM_noAssumption(
   testStats,
   initMuList,
   initPiList,
-  sameDirAlt = FALSE,
+  sameDirAlt,
   eps = 10^(-5),
   checkpoint = FALSE
 )
@@ -40,15 +40,15 @@ but we don't assume that the means in the composite alternative are greater in m
 \examples{
 set.seed(0)
 testStats <- cbind(rnorm(10^4), rnorm(10^4))
-testStats[1:200, 1] <- rnorm(100, mean=3)
-testStats[201:400, 1] <- rnorm(100, mean=5)
-testStats[401:600, 2] <- rnorm(100, mean=3)
-testStats[601:800, 2] <- rnorm(100, mean=5)
-testStats[801:1000, 1:2] <- rnorm(200, mean=7)
+testStats[1:200, 1] <- rnorm(200, mean=3)
+testStats[201:400, 1] <- rnorm(200, mean=-3)
+testStats[401:600, 2] <- rnorm(200, mean=3)
+testStats[601:800, 2] <- rnorm(200, mean=-3)
+testStats[801:900, 1:2] <- rnorm(200, mean=-7)
+testStats[901:1000, 1:2] <- rnorm(200, mean=7)
 initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3, 0, 5), nrow=2, ncol=2),
 matrix(data=c(3, 0, 5, 0), nrow=2, ncol=2), matrix(data=c(7, 7), nrow=2, ncol=1))
 initPiList <- list(c(0.9), c(0.02, 0.02),c(0.02, 0.02), c(0.02))
-results <- symm_fit_ind_EM_noAssumption(testStats = testStats,
+results <- symm_fit_ind_EM_noAssumption(testStats = testStats, sameDirAlt = TRUE,
 initMuList = initMuList, initPiList = initPiList)
-
 }

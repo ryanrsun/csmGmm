@@ -9,6 +9,7 @@ symm_fit_cor_EM(
   corMat,
   initMuList,
   initPiList,
+  sameDirAlt,
   eps = 10^(-5),
   checkpoint = FALSE
 )
@@ -21,6 +22,8 @@ symm_fit_cor_EM(
 \item{initMuList}{List of 2^K elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.}
 
 \item{initPiList}{List of 2^K elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.}
+
+\item{sameDirAlt}{Boolean, set to TRUE for replication testing, which uses a smaller alternative space.}
 
 \item{eps}{Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.}
 
@@ -40,14 +43,18 @@ Fit the correlated csmGmm for sets of correlated elements. Currently restricted 
 set.seed(0)
 corMat <- matrix(data=c(1, 0.3, 0.3, 1), nrow=2)
 testStats <- rbind(mvtnorm::rmvnorm(n=200, mean=c(3, 0), sigma=corMat),
-mvtnorm::rmvnorm(n=200, mean=c(0, 4), sigma=corMat),
+mvtnorm::rmvnorm(n=200, mean=c(-3, 0), sigma=corMat),
+mvtnorm::rmvnorm(n=200, mean=c(0, 3), sigma=corMat),
+mvtnorm::rmvnorm(n=200, mean=c(0, -3), sigma=corMat),
 mvtnorm::rmvnorm(n=100, mean=c(7, 7), sigma=corMat),
-mvtnorm::rmvnorm(n=10^4 - 500, mean=c(0, 0), sigma=corMat))
+mvtnorm::rmvnorm(n=100, mean=c(7, -7), sigma=corMat),
+mvtnorm::rmvnorm(n=100, mean=c(-7, 7), sigma=corMat),
+mvtnorm::rmvnorm(n=100, mean=c(-7, -7), sigma=corMat),
+mvtnorm::rmvnorm(n=10^4 - 1200, mean=c(0, 0), sigma=corMat))
 initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3), nrow=2),
 matrix(data=c(4, 0), nrow=2), matrix(data=c(5, 5), nrow=2))
 initPiList <- list(c(0.9), c(0.04), c(0.04), c(0.02))
 results <- symm_fit_cor_EM(testStats = testStats, corMat = cor(testStats),
-initMuList = initMuList, initPiList = initPiList)
-
+initMuList = initMuList, initPiList = initPiList, sameDirAlt = TRUE)
 
 }

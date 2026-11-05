@@ -6,6 +6,7 @@
 #' @param initRho Initial value of rho, any reasonable guess should be ok.
 #' @param initMuList List of 2^K elements where each element is a matrix with K rows and number of columns equal to the number of possible mean vectors for that binary group.
 #' @param initPiList List of 2^K elements where each element is a vector with number of elements equal to the number of possible mean vectors for that binary group.
+#' @param sameDirAlt Boolean, set to TRUE for replication testing, which uses a smaller alternative space.
 #' @param eps Scalar, stop the EM algorithm when L2 norm of difference in parameters is less than this value.
 #' @param checkpoint Boolean, set to TRUE to print iterations of EM.
 #'
@@ -23,17 +24,30 @@
 #' set.seed(0)
 #' corMat <- matrix(data=c(1, 0.3, 0.3, 1), nrow=2)
 #' testStats <- rbind(mvtnorm::rmvnorm(n=200, mean=c(3, 0), sigma=corMat),
-#' mvtnorm::rmvnorm(n=200, mean=c(0, 4), sigma=corMat),
+#' mvtnorm::rmvnorm(n=200, mean=c(-3, 0), sigma=corMat),
+#' mvtnorm::rmvnorm(n=200, mean=c(0, 3), sigma=corMat),
+#' mvtnorm::rmvnorm(n=200, mean=c(0, -3), sigma=corMat),
 #' mvtnorm::rmvnorm(n=100, mean=c(7, 7), sigma=corMat),
-#' mvtnorm::rmvnorm(n=10^4 - 500, mean=c(0, 0), sigma=corMat))
+#' mvtnorm::rmvnorm(n=100, mean=c(7, -7), sigma=corMat),
+#' mvtnorm::rmvnorm(n=100, mean=c(-7, 7), sigma=corMat),
+#' mvtnorm::rmvnorm(n=100, mean=c(-7, -7), sigma=corMat),
+#' mvtnorm::rmvnorm(n=10^4 - 1200, mean=c(0, 0), sigma=corMat))
 #' initMuList <- list(matrix(data=0, nrow=2, ncol=1), matrix(data=c(0, 3), nrow=2),
 #' matrix(data=c(4, 0), nrow=2), matrix(data=c(5, 5), nrow=2))
 #' initPiList <- list(c(0.9), c(0.04), c(0.04), c(0.02))
 #' results <- symm_fit_cor_EM_rho(testStats = testStats,
-#' initRho = 0.1, initMuList = initMuList, initPiList = initPiList)
+#' initRho = 0.1, initMuList = initMuList, initPiList = initPiList, sameDirAlt = TRUE)
 #'
 
-symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps = 10^(-5), checkpoint=FALSE) {
+symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, sameDirAlt, eps = 10^(-5), checkpoint=FALSE) {
+  # check for two column matrix
+  if (!is.matrix(testStats) || ncol(testStats) != 2L) {
+    stop("`testStats` must be a matrix with exactly 2 columns.", call. = FALSE)
+  }
+
+  # check sameDirAlt
+  if (missing(sameDirAlt)) stop("sameDirAlt must be specified: TRUE for replication, FALSE for mediation/pleiotropy")
+  stopifnot(is.logical(sameDirAlt), length(sameDirAlt) == 1)
 
   J <- nrow(testStats)
   # number of dimensions
@@ -50,11 +64,15 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
     blVec <- blVec + 2^(K - k_it) * abs(Hmat[, k_it])
     slVec <- slVec + abs(Hmat[, k_it])
   }
+  # symmetric alternative
+  symAltVec <- ifelse(apply(Hmat[, 1:K], 1, sum) == K | apply(Hmat[, 1:K], 1, sum) == -K, 1, 0)
   # sort Hmat
-  Hmat <- Hmat %>% mutate(bl = blVec) %>%
-    mutate(sl = slVec) %>%
-    arrange(.data$bl, .data$Var1, .data$Var2) %>%
-    mutate(l = 0:(nrow(.) - 1))
+  Hmat <- Hmat %>% dplyr::mutate(bl = blVec) %>%
+    dplyr::mutate(sl = slVec) %>%
+    dplyr::mutate(symAlt = symAltVec) %>%
+    dplyr::arrange(.data$bl, .data$Var1, .data$Var2) %>%
+    dplyr::mutate(l = 0:(nrow(.) - 1)) %>%
+    dplyr::relocate(.data$l, .before = .data$symAlt)
 
   # initialize
   # the muInfo and piInfo are lists that hold the information in a more compact manner.
@@ -78,11 +96,11 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
 
     # allPi holds the probabilities of each configuration (c 1), the bl of that
     # configuration (c 2), the sl of that configuration (c3), the m of that configuration (c 4),
-    # and the l of that configuration (c 5),
+    # and the l of that configuration (c 5), and whether it's part of the symmetric alternative (c 6)
 
     # number of rows in piMat is L if Mb = 1 for all b.
     # number of rows is \sum(l = 0 to L-1) {Mbl}
-    allPi <- c(piInfo[[1]], 0, 0, 1, 0)
+    allPi <- c(piInfo[[1]], 0, 0, 1, 0, 0)
 
     # allMu holds the mean vectors for each configuration in each row, number of columns is K
     allMu <- rep(0, K)
@@ -96,15 +114,15 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
       # loop through possible m for this value of bl
       for (m_it in 1:MbVec[b_it + 1]) {
         allPi <- rbind(allPi, cbind(rep(piInfo[[b_it + 1]][m_it] / (2^tempH$sl[1]), nrow(tempH)), tempH$bl,
-                                    tempH$sl, rep(m_it, nrow(tempH)), tempH$l))
+                                    tempH$sl, rep(m_it, nrow(tempH)), tempH$l, tempH$symAlt))
 
         for (h_it in 1:nrow(tempH)) {
-          allMu <- cbind(allMu, unlist(tempH %>% dplyr::select(-.data$bl, -.data$sl, -.data$l) %>%
+          allMu <- cbind(allMu, unlist(tempH %>% dplyr::select(-.data$bl, -.data$sl, -.data$l, -.data$symAlt) %>%
                                          slice(h_it)) * muInfo[[b_it + 1]][, m_it])
         }
       } # done looping through different m
     } # dont looping through bl
-    colnames(allPi) <- c("Prob", "bl", "sl", "m", "l")
+    colnames(allPi) <- c("Prob", "bl", "sl", "m", "l", "symAlt")
 
     ##############################################################################################
     # this is the E step where we calculate Pr(Z|c_l,m) for all c_l,m.
@@ -141,7 +159,7 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
         AikIdx <- which(allPi[, 2] == b_it & allPi[, 4] == m_it)
         for (idx_it in 1:length(AikIdx)) {
           tempAik <- AikIdx[idx_it]
-          tempHvec <- tempHmat %>% dplyr::select(-.data$bl, -.data$sl, -.data$l) %>%
+          tempHvec <- tempHmat %>% dplyr::select(-.data$bl, -.data$sl, -.data$l, -.data$symAlt) %>%
             dplyr::slice(idx_it) %>% unlist(.)
           LsigInvL <- diag(tempHvec) %*% sigInv %*% diag(tempHvec)
 
@@ -207,7 +225,11 @@ symm_fit_cor_EM_rho <- function(testStats, initRho, initMuList, initPiList, eps 
   }
 
   # calculate local fdrs
-  nullCols <- which(allPi[, 3] < K)
+  if (sameDirAlt) {
+    nullCols <- which(allPi[, 6] == 0)
+  } else {
+    nullCols <- which(allPi[, 3] < K)
+  }
   probNull <- apply(conditionalMat[, nullCols], 1, sum)
   lfdrResults <- probNull / probZ
 

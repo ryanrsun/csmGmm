@@ -5,6 +5,7 @@
 #' @param datasets list holding K datasets to use for replication analysis
 #' @param dataset_names optional vector of names for each dataset; otherwise function uses Dataset1,.., DatasetK as default.
 #' @param z_cap optional number to cap the most extreme z-scores, we recommend setting at 8.1 as R is not very accurate for very large z-scores
+#' @param strand_aligned Boolean that describes whether the strands are pre-aligned. If not, removes all palindromic SNPs.
 #'
 #' @return A list with the elements:
 #' \item{extra_dat}{A J*K matrix with J matching SNPs across K datasets, holds relevant SNP information.}
@@ -35,47 +36,48 @@
 prepare_csmgmm_data <- function(
     datasets,
     dataset_names = NULL,
-    z_cap = 8.1
+    z_cap = 8.1,
+    strand_aligned = FALSE
 ) {
-  
+
   # -----------------------------------
   # Dataset names
   # -----------------------------------
   if (is.null(dataset_names)) {
     dataset_names <- paste0("Dataset", seq_along(datasets))
   }
-  
+
   if (length(dataset_names) != length(datasets)) {
     stop("dataset_names must match datasets")
   }
-  
+
   merged_dat <- c()
   for (k in 1:length(datasets)) {
-    
+
     # -----------------------------------------------
     # Check required columns for Z-score construction
     # -----------------------------------------------
     beta_col <- grep("(beta|^effect$|effect(?!_?allele))", names(datasets[[k]]), value = TRUE, ignore.case = TRUE, perl = TRUE)
     se_col <- grep("(std[_]?err|standard[_]?error|se$)", names(datasets[[k]]), value = TRUE, ignore.case = TRUE)
     or_col <- grep("(^or$|odds[_]?ratio)", names(datasets[[k]]), value = TRUE, ignore.case = TRUE)
-    
+
     if (length(beta_col) == 0) {
-      
+
       if (length(or_col) > 0) {
         datasets[[k]]$derived_beta <- log(datasets[[k]][[or_col[1]]])
         beta_col <- "derived_beta"}
     }
-      
-    
+
+
     if (length(beta_col) == 0) {
       stop(paste0(dataset_names[k], "missing beta column"))
     }
-    
+
     if (length(se_col) == 0) {
       stop(paste0(dataset_names[k], "missing standard error column"))
     }
-    
-    
+
+
     # -------------------------------
     # Standardize variant information
     # -------------------------------
@@ -87,13 +89,13 @@ prepare_csmgmm_data <- function(
     if (any(is.na(required_id_cols))) {
       stop(paste0(dataset_names[k], " cannot create variant ID (missing columns)"))
     }
-    
-    
+
+
     # -------------------------------
     # Calculate Z-scores and add variant ID
     # -------------------------------
     z_col_name <- paste0("Z_", dataset_names[k])
-    
+
     df <- datasets[[k]] %>%
       mutate(
         Chr = .data[[chr_col]],
@@ -110,7 +112,7 @@ prepare_csmgmm_data <- function(
       dplyr::filter(
         nchar(paste0(.data$A1, .data$A2)) == 2
       )
-    
+
     # -----------------------------------------------
     # Flip for allele if needed
     # -----------------------------------------------
@@ -121,26 +123,33 @@ prepare_csmgmm_data <- function(
       merged_dat <- merge(merged_dat, df, by=c("Chr", "BP")) %>%
         mutate(match = ifelse(.data$EA == .data$A1 & .data$OA == .data$A2, 1, 0)) %>%
         mutate(flip = ifelse(.data$EA == .data$A2 & .data$OA == .data$A1, 1, 0)) %>%
+        mutate(fullAlleles = paste0(.data$EA, .data$OA)) %>%
+        #dplyr::filter(!(fullAlleles %in% c("AT", "TA", "CG", "GC")) %>%
         dplyr::filter(.data$match + .data$flip > 0) %>%
         dplyr::mutate(across(all_of(z_col_name), \(x) if_else(.data$flip == 1, -x, x))) %>%
         dplyr::select(-dplyr::all_of(c("A1", "A2", "match", "flip")))
+
+      if (!(strand_aligned)) {
+        merged_dat <- merged_dat %>% dplyr::filter(!(.data$fullAlleles %in% c("AT", "TA", "CG", "GC")))
+      }
     }
-    
+
+
   }
-  
+
   # -----------------------------------
   # Extract Z-score matrix
   # -----------------------------------
   testDat <- merged_dat %>%
     select(starts_with("Z_")) %>%
     as.matrix()
-  
+
   # -----------------------------------
   # Cap Z-scores
   # -----------------------------------
   testDat[testDat > z_cap] <- z_cap
   testDat[testDat < -z_cap] <- -z_cap
-  
+
   return(list(
     extra_dat = merged_dat,
     clean_dat = testDat,

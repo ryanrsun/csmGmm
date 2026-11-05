@@ -4,7 +4,12 @@
 \alias{prepare_csmgmm_data}
 \title{prepare_csmgmm_data.R}
 \usage{
-prepare_csmgmm_data(datasets, dataset_names = NULL, z_cap = 8.1)
+prepare_csmgmm_data(
+  datasets,
+  dataset_names = NULL,
+  z_cap = 8.1,
+  strand_aligned = FALSE
+)
 }
 \arguments{
 \item{datasets}{list holding K datasets to use for replication analysis}
@@ -12,6 +17,8 @@ prepare_csmgmm_data(datasets, dataset_names = NULL, z_cap = 8.1)
 \item{dataset_names}{optional vector of names for each dataset; otherwise function uses Dataset1,.., DatasetK as default.}
 
 \item{z_cap}{optional number to cap the most extreme z-scores, we recommend setting at 8.1 as R is not very accurate for very large z-scores}
+
+\item{strand_aligned}{Boolean that describes whether the strands are pre-aligned. If not, removes all palindromic SNPs.}
 }
 \value{
 A list with the elements:
